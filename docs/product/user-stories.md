@@ -10,6 +10,7 @@
 - **Rich text formatting** is supported on all free-form notes fields across every content type (bold, italic, underline, bullet points, numbered lists, hyperlinks)
 - **Status is always manual** — never auto-derived from content or actions
 - **No required fields beyond a name/title** on any content type — all records support progressive enrichment
+- **Desktop browser only** — no mobile layout or touch interaction required in this version
 
 ---
 
@@ -93,7 +94,6 @@ Then the POI is automatically linked to the current context (country, region, or
 - POI name is the only required field — all other fields (description, tags, practical notes) are optional
 - A POI can be linked to a country, region, or city — city is not required
 - Duplicate POI names within the same parent trigger a warning but do not block creation
-- If I add a POI via mobile quick-capture with no parent specified it is saved to an Unassigned inbox for later organization
 - A POI can be re-linked to a different parent if it was initially miscategorized
 - No tags are applied automatically
 
@@ -174,7 +174,6 @@ When I enter text into the notes field,
 Then a rich text editor is available supporting at minimum: bold, italic, underline, bullet points, numbered lists, and hyperlinks.
 
 **Edge Cases:**
-- Rich text formatting must be preserved when viewing on mobile — both capture and reference modes
 - Rich text formatting must render correctly in presentation mode
 - Pasting content from OneNote or a web browser should preserve basic formatting where possible — if formatting cannot be preserved plain text is pasted without silent data corruption
 - An empty notes field shows a subtle prompt but never forces formatting on the user
@@ -636,7 +635,6 @@ Then search is triggered in the most relevant context — in-context search if I
 
 **Edge Cases:**
 - Ctrl+F behavior (app intercept vs. browser native) to be determined by UX best practice research before implementation
-- On mobile Ctrl+F is not applicable — search is triggered via search UI only
 - The triggered search state is dismissable without losing current position in the app
 
 **Open Decision:** Determine whether intercepting Ctrl+F is best practice for a web app or whether deferring to browser native find-in-page is the better convention. Implementation follows that finding.
@@ -741,7 +739,6 @@ Then all shortlisted trips are displayed side by side showing trip concept, loca
 - Comparison view is read-only — no editing controls visible
 - If a shortlisted trip has no budget attached its budget column shows as not yet estimated
 - If a shortlisted trip has no photos a placeholder is shown
-- Comparison view adjusts layout appropriately for desktop and mobile screen sizes
 - If only one trip is shortlisted comparison view is accessible but notes that only one option is present
 
 ---
@@ -851,7 +848,6 @@ Then the view switches to a full clean display showing all shortlisted trips wit
 - Entering presentation mode does not alter any data or statuses
 - Presentation mode is dismissable at any time returning me to exactly where I was in the Travel Window
 - If only one trip is shortlisted presentation mode shows that single trip with no comparison navigation
-- Presentation mode is accessible on both desktop and mobile with layout adjusting appropriately
 
 ---
 
@@ -890,7 +886,6 @@ Then all shortlisted trips are shown side by side with consistent information di
 **Edge Cases:**
 - Comparison view is read-only — no editing controls visible
 - All trips display the same information fields for consistency — missing fields show as not yet added rather than hidden
-- Comparison view layout adjusts for screen size — on mobile trips may stack vertically
 - If only one trip is shortlisted comparison view is not available — individual view is shown with a note that only one option exists
 - Vibe tags are only shown if at least one trip has tags applied — if no trips have tags the tag row is hidden entirely
 
@@ -931,19 +926,18 @@ Then photos are displayed as a supporting visual element — present and attract
 - If no photos are attached a clean neutral placeholder is shown
 - The hero image is the designated hero photo if set, otherwise the first available photo from the trip or its linked content
 - Photos from any level of the content hierarchy are eligible — trip, country, region, city, or POI
-- On mobile photos scale appropriately without distorting the layout
 
 ---
 
 **US-042 — Navigate and Exit Presentation Mode**
-*When presenting destination options, I want intuitive keyboard and accessibility controls, so that I can navigate the presentation smoothly without reaching for the mouse.*
+*When presenting destination options, I want intuitive keyboard controls, so that I can navigate the presentation smoothly without reaching for the mouse.*
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
 Given I am in presentation mode,
-When I use keyboard or accessibility controls,
+When I use keyboard controls,
 Then the following behaviors are supported:
 - **Escape** — exits presentation mode and returns to the Travel Window
 - **Arrow keys (left/right)** — navigate between shortlisted trips in individual view
@@ -954,9 +948,7 @@ Then the following behaviors are supported:
 
 **Edge Cases:**
 - Exit control is always visible on screen but unobtrusive
-- Keyboard shortcuts are consistent and do not conflict with browser or OS defaults where possible — conflicts deferred to best practice research
-- On mobile navigation is touch/swipe based
-- All keyboard navigation is consistent with WCAG accessibility standards
+- Keyboard shortcuts are consistent and do not conflict with browser or OS defaults where possible
 - A visible keyboard shortcut reference is accessible from within presentation mode without disrupting the presentation
 - Exiting presentation mode does not trigger any status changes or data updates
 - If presentation mode is accidentally exited re-entering returns to the beginning of the presentation
@@ -980,7 +972,6 @@ Then the complete trip record is shown including all location blocks, day-by-day
 - Navigating into full detail and back to the presentation summary is seamless — no loss of position
 - If accessed from comparison view returning from full detail brings me back to the comparison view
 - All rich text formatting renders correctly in full detail view
-- On mobile full detail view scrolls naturally without breaking the presentation mode context
 
 ---
 
@@ -1296,141 +1287,56 @@ Then the new category appears in the tag selector for the assigned content types
 
 ---
 
-## 10. Mobile & Offline
+## 10. Mobile & Offline — Deferred
+
+> **All stories in this section are deferred.** This version of the app is a local desktop web app. Mobile layout, offline storage, and multi-device sync are not in scope. Stories are documented here for future reference when expanding to a hosted, multi-device version.
+>
+> **Prerequisites for activation:** cloud hosting, authentication, multi-device sync infrastructure, offline-first architecture (service workers or native app wrapper), and responsive UI redesign. See [Deferred Scope in requirements.md] for full expansion notes.
 
 ---
 
-**US-044 — Quick Capture a Content Stub on Mobile**
-*When I'm on the go and want to capture a destination idea or POI immediately, I want a fast mobile quick-capture flow, so that the idea is saved before it's forgotten without requiring me to fill out a full record.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I am on mobile anywhere in the app,
-When I trigger quick capture,
-Then I am presented with a minimal form asking only for content type and name, and the record is saved as a stub in the master library in under 3 taps.
-
-**Edge Cases:**
-- Quick capture is accessible from any screen on mobile — never more than one tap away
-- All content types are available via quick capture
-- If no parent context is specified the stub is saved to an Unassigned inbox for later organization
-- Quick capture does not require an internet connection — stubs created offline are queued and synced when connectivity is restored
-- If a duplicate name is detected the app warns before saving but does not hard block
-- No tags are applied automatically
+**US-044 — Quick Capture a Content Stub on Mobile** *(Deferred — Mobile)*
+Quick-capture flow for saving a stub (name only) in under 3 taps from any screen on mobile. Stubs saved offline queue for sync when connectivity returns.
 
 ---
 
-**US-045 — Access Full Library on Mobile**
-*When I'm away from my desktop, I want to browse and edit my full library on mobile, so that I'm not limited to quick capture and can do lightweight research or planning from my phone.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I am on mobile with the app open,
-When I browse the master library,
-Then the full content hierarchy is accessible and navigable with a mobile-optimized layout.
-
-**Edge Cases:**
-- All content types are accessible on mobile — no content is desktop-only
-- Editing any record is supported on mobile
-- Rich text editor is functional on mobile
-- Search and filtering are fully functional on mobile
-- Large records with extensive notes scroll naturally without performance degradation
+**US-045 — Access Full Library on Mobile** *(Deferred — Mobile)*
+Full content hierarchy browsable and editable via mobile-optimized layout. All content types, rich text editor, search, and filtering functional on mobile.
 
 ---
 
-**US-046 — Access Trip Itinerary on Mobile While Traveling**
-*When I'm in-destination and need to know what's next, I want fast access to my active trip itinerary on mobile, so that I can reference the day's plan, addresses, and POI details without digging through the app.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I am on mobile viewing an active trip,
-When I open the itinerary view,
-Then the day-by-day plan is immediately visible with the current day surfaced prominently, showing all POIs, addresses, practical notes, and free-form notes for that day in a clean readable layout.
-
-**Edge Cases:**
-- The current day is surfaced automatically based on device date if it falls within the trip's date range — otherwise Day 1 is shown by default
-- All POI details are accessible with one tap
-- Itinerary view is fully functional offline
-- If the trip has no specific dates set the itinerary displays from Day 1
-- Photos attached to POIs are accessible but may load on-demand if offline storage is optimized in the future
+**US-046 — Access Trip Itinerary on Mobile While Traveling** *(Deferred — Mobile Reference)*
+In-destination itinerary view surfacing the current day prominently with POI details, addresses, and practical notes. Day auto-detected from device date if within trip range.
 
 ---
 
-**US-047 — Use App Fully Offline on Mobile**
-*When I'm traveling with poor or no connectivity, I want the full library available offline, so that I can reference any research or itinerary detail without needing an internet connection.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I have previously opened the app with an internet connection,
-When I open the app with no internet connection,
-Then the full library is available including all countries, regions, cities, POIs, trips, tips, budgets, and photos, with a clear indicator that I am in offline mode.
-
-**Edge Cases:**
-- All content is readable offline — no content type is excluded
-- Edits made offline are queued and synced automatically when connectivity is restored
-- If an offline edit conflicts with a change made on another device the app flags the conflict and prompts resolution — no silent overwrites
-- The offline indicator is visible but unobtrusive
-- Photos are included in offline storage by default — optimization to text-only offline is a known future lever
+**US-047 — Use App Fully Offline on Mobile** *(Deferred — Offline)*
+Full library available offline including all content types and photos. Offline edits queue and sync automatically on reconnect. Conflict resolution prompts when edits clash across devices.
 
 ---
 
-**US-048 — Sync Changes Across Devices**
-*When I switch between my phone and laptop during planning, I want changes synced automatically across devices, so that my library is always up to date regardless of which device I used last.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I have made changes on one device,
-When I open the app on another device with internet connectivity,
-Then all changes are reflected automatically with no manual sync action required.
-
-**Edge Cases:**
-- Sync happens in the background — no loading screen or manual trigger required
-- If connectivity is lost mid-sync the app completes the sync when connectivity is restored without data loss
-- If a sync conflict exists between two devices the app flags it clearly and prompts resolution — no silent overwrites
-- Large photo uploads may sync separately from text content
+**US-048 — Sync Changes Across Devices** *(Deferred — Sync)*
+Automatic background sync across devices on reconnect. No manual trigger required. Conflicts flagged with resolution prompt — no silent overwrites.
 
 ---
 
-**US-049 — Offline Indicator and Sync Status**
-*When I'm offline or syncing, I want a clear but unobtrusive status indicator, so that I always know the current state of my data without it interrupting my workflow.*
-
-**Priority:** P2
-
-**Acceptance Criteria:**
-
-Given I am using the app in any state (online, offline, or syncing),
-When the connectivity or sync state changes,
-Then a visible but unobtrusive indicator reflects the current state — Online, Offline, Syncing, or Sync Failed.
-
-**Edge Cases:**
-- The indicator never blocks content or interactions — it is informational only
-- A Sync Failed state provides a clear explanation and a manual retry option
-- If sync has been failing silently for an extended period the app surfaces a more prominent warning
-- The indicator is accessible on both mobile and desktop
+**US-049 — Offline Indicator and Sync Status** *(Deferred — Sync)*
+Unobtrusive status indicator showing Online / Offline / Syncing / Sync Failed. Sync Failed surfaces explanation and manual retry. Never blocks content or interactions.
 
 ---
 
 ## Story Count Summary
 
-| Section | Stories | P0 | P1 | P2 |
-|---|---|---|---|---|
-| Content Creation | 6 | 5 | 1 | 0 |
-| Content Enrichment & Editing | 5 | 3 | 2 | 0 |
-| Trip Building | 6 | 6 | 0 | 0 |
-| Budget | 5 | 5 | 0 | 0 |
-| Search & Discovery | 7 | 4 | 3 | 0 |
-| Travel Windows | 8 | 7 | 1 | 0 |
-| Presentation Mode | 7 | 6 | 1 | 0 |
-| Tips & Lessons Learned | 6 | 0 | 6 | 0 |
-| Tagging & Organization | 9 | 0 | 7 | 2 |
-| Mobile & Offline | 6 | 0 | 0 | 6 |
-| **Total** | **65** | **36** | **21** | **8** |
+| Section | Stories | P0 | P1 | P2 | Deferred |
+|---|---|---|---|---|---|
+| Content Creation | 6 | 5 | 1 | 0 | 0 |
+| Content Enrichment & Editing | 5 | 3 | 2 | 0 | 0 |
+| Trip Building | 6 | 6 | 0 | 0 | 0 |
+| Budget | 5 | 5 | 0 | 0 | 0 |
+| Search & Discovery | 7 | 4 | 3 | 0 | 0 |
+| Travel Windows | 8 | 7 | 1 | 0 | 0 |
+| Presentation Mode | 7 | 6 | 1 | 0 | 0 |
+| Tips & Lessons Learned | 6 | 0 | 6 | 0 | 0 |
+| Tagging & Organization | 9 | 0 | 7 | 2 | 0 |
+| Mobile & Offline | 6 | 0 | 0 | 0 | 6 |
+| **Total** | **65** | **36** | **21** | **2** | **6** |

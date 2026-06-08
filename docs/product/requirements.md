@@ -8,6 +8,14 @@ A personal travel intelligence hub where years of curated research, planning, an
 
 ---
 
+## Deployment Context
+
+**This version is a local desktop web app.** It runs on your machine (localhost), uses local storage (SQLite or flat-file), requires no internet connection to function, and is single-user with no authentication. All data lives on your computer.
+
+Cloud hosting, multi-device sync, authentication, and mobile support are explicitly deferred. See [Deferred Scope](#deferred-scope) at the end of this document.
+
+---
+
 ## Problem Statement
 
 Avid travelers accumulate rich, hard-won knowledge across trip research, budgeting, POIs, and itineraries — but OneNote and similar tools turn that knowledge into a graveyard. Content is hard to search across, impossible to cross-reference, and painful to reuse when planning a new trip. Existing research decays instead of compounding.
@@ -80,7 +88,7 @@ Regions and Cities do not have formal status — depth is implied by content vol
 - **FR8** — Budget is a single flexible content type with no Rough vs. Detailed distinction. It starts as simple as a name and grows in detail over time. Structure: customizable categories containing line items, each with three columns — Budgeted/Estimate, Actual, Difference. Visual indicators (Under, Over, Close) appear at line item, category, and summary levels. Close threshold is user-configurable, defaulting to 10%. A summary snapshot (total budgeted, total actual, total difference, cost per person, cost per day) is auto-calculated and surfaced in presentation mode. All amounts are in USD. Budget templates allow reuse of category structure across trips without carrying over amounts.
 
 ### Presentation Mode
-- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (all shortlisted trips side by side). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab) and consistent with WCAG accessibility standards.
+- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (all shortlisted trips side by side). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab).
 - **FR10** — Presentation mode includes a side-by-side comparison view of 2-3 shortlisted trips within a Travel Window.
 - **FR11** — Travel Window is a first-class concept. Contains a target travel date/window and 2-3 shortlisted trips referenced (not copied) from the master library. Trips are fully editable from within the Travel Window view — edits reflect immediately in the master library. A chosen trip can be flagged within the Travel Window; unchosen trips remain visible and intact. Travel Windows persist permanently as historical records and are never automatically deleted or hidden. When a trip within a Travel Window is marked `Completed`, a point-in-time snapshot of that trip is automatically captured and stored — preserving the full trip state (location blocks, days, POIs, notes, budget, photos) at that moment. Future edits to the live trip do not alter the snapshot. Users can toggle between snapshot view and live view within a Travel Window.
 - **FR12** — Presentation mode requires zero explanation to navigate. A non-user should be able to scroll through it intuitively without guidance.
@@ -89,19 +97,17 @@ Regions and Cities do not have formal status — depth is implied by content vol
 - No technical import from OneNote. Migration is handled manually by the primary user, used intentionally as a testing and refinement phase for the content model.
 
 ### Content Editing
-- **FR13** — All free-form notes fields across every content type support rich text editing: bold, italic, underline, bullet points, numbered lists, and hyperlinks. Rich text formatting is preserved on mobile and renders correctly in presentation mode. Pasting from external sources (OneNote, browser) preserves basic formatting where possible — if not, plain text is pasted without silent data corruption.
+- **FR13** — All free-form notes fields across every content type support rich text editing: bold, italic, underline, bullet points, numbered lists, and hyperlinks. Rich text formatting is preserved on desktop and renders correctly in presentation mode. Pasting from external sources (OneNote, browser) preserves basic formatting where possible — if not, plain text is pasted without silent data corruption.
 
 ---
 
 ## Non-Functional Requirements
 
-- **NFR1** — Search and filtering must feel instant. This is a reference tool used mid-planning and mid-travel.
-- **NFR2** — Three distinct device contexts, each with its own UX consideration. Desktop/Laptop is the primary planning environment (P0). Mobile Capture and Mobile Reference are planned P2 enhancements:
-  - **Desktop/Laptop** *(P0)* — primary planning environment; full content creation, itinerary building, budget work, presentation mode
-  - **Mobile Capture** *(P2)* — quick add of stubs, POIs, tips; minimal friction, fast
-  - **Mobile Reference** *(P2)* — read-only in-destination use; optimized for finding specific information quickly (addresses, itinerary details, bookings)
-- **NFR3** *(P2)* — Full library available offline on mobile. Photo optimization (text-only offline, photos on-demand) is a known future scaling lever.
-- **NFR4** *(Post-MVP)* — Full data export in JSON format, preserving content relationships. Target for longevity and portability.
+- **NFR1** — Search and filtering must feel instant. This is a reference tool used mid-planning.
+- **NFR2** — Desktop/laptop browser is the only supported environment (P0). The app is not required to be responsive or functional on mobile. See [Deferred Scope](#deferred-scope) for mobile plans.
+- **NFR3** — Single-user, no authentication required. The app assumes it is running on the owner's local machine.
+- **NFR4** — Local data storage only. Data persists via SQLite or a structured flat-file format on the local filesystem. No cloud database, no sync service.
+- **NFR5** *(P2)* — Full data export in JSON format, preserving content relationships. Lower urgency in a local-first context (data is already portable) but worth building to avoid future lock-in.
 
 ---
 
@@ -111,5 +117,33 @@ Regions and Cities do not have formal status — depth is implied by content vol
 - Free-form tagging (planned P2 enhancement)
 - Custom tag categories and values (planned P2 enhancement)
 - Social or community features
-- Data export — planned post-MVP in JSON format
-- Mobile app (planned P2 — desktop/laptop is the primary platform)
+- Mobile app or mobile-optimized layout
+- Cloud hosting or remote access
+- Multi-device sync
+- User authentication
+- Data export — planned P2 in JSON format
+
+---
+
+## Deferred Scope
+
+The following capabilities are explicitly out of scope for the local version and documented here for future expansion planning.
+
+### Cloud Hosting & Authentication
+**What it is:** Moving the app from localhost to a hosted URL, with a login system so the data is accessible from anywhere.
+**Why deferred:** Adds infrastructure complexity (hosting, auth provider, secrets management) with no benefit for a single-user local tool.
+**What it unlocks when built:** Remote access, sharing, and the ability to support additional users.
+**Rough prerequisites:** Backend API layer, auth provider integration (e.g. Auth0 or Supabase Auth), cloud database migration from local SQLite.
+
+### Multi-Device Sync
+**What it is:** Changes made on one device automatically appear on another — phone, tablet, second laptop.
+**Why deferred:** Requires a cloud backend and conflict resolution logic. Not applicable to a single local machine.
+**What it unlocks when built:** Seamless switching between devices mid-planning or mid-travel.
+**Rough prerequisites:** Cloud hosting + auth (above), sync engine, conflict resolution strategy (last-write-wins vs. merge).
+
+### Mobile App (Capture, Reference, Offline)
+**What it is:** Three mobile use cases — quick stub capture on the go, in-destination reference of itinerary and POI details, full offline library access.
+**Why deferred:** Requires responsive layout design, mobile-specific UX patterns, offline-first architecture (service workers or native app wrapper), and sync infrastructure.
+**What it unlocks when built:** The full travel lifecycle — research and planning on desktop, reference and capture while actually traveling.
+**Rough prerequisites:** Multi-device sync (above), responsive UI overhaul or native app wrapper, offline storage strategy (text-first with on-demand photos).
+**Stories on hold:** US-044, US-045, US-046, US-047, US-048, US-049.

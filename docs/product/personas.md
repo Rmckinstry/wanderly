@@ -8,7 +8,7 @@
 **Name & Role:** You — the solo researcher and trip planner
 
 **Context:**
-Plans multiple trips per year. Has deep existing research accumulated over years in OneNote, but also constantly encounters new destinations — a friend mentions a city, a travel article sparks interest, a flight deal appears. Needs to capture that spark immediately before it's lost. Does all research independently before bringing options to a decision conversation with a partner.
+Plans multiple trips per year. Has deep existing research accumulated over years in OneNote, but also constantly encounters new destinations — a friend mentions a city, a travel article sparks interest, a flight deal appears. Needs to capture that spark immediately before it's lost. Does all research independently before bringing options to a decision conversation with a partner. Works exclusively at a desktop or laptop — this is a planning tool, not an in-destination tool.
 
 **Core Goal:**
 One place where existing knowledge lives *and* new knowledge grows — whether fully researched or just a stub. Turn years of accumulated travel research into reusable trip-planning capital so a new trip doesn't start from zero.
@@ -20,12 +20,14 @@ One place where existing knowledge lives *and* new knowledge grows — whether f
 - Reusing a past itinerary means copy-pasting and manually reformatting
 - Rich research decays and becomes hard to navigate over time
 
-**How this product helps:**
+**How this product helps (local version):**
 - Structured content types + rich tagging means research compounds over time instead of decaying
 - Progressive enrichment — a country can start as just a name and grow in detail as interest develops
 - Building a new itinerary means pulling from a living library of POIs, tips, and regions — not starting over
 - Travel Windows formalize the shortlisting and decision workflow already happening informally
-- Mobile reference mode makes accumulated research accessible while actually traveling
+
+**Deferred use case — Mobile Reference:**
+Accessing accumulated research while actually traveling (addresses, itinerary details, POI notes in-destination) is a planned future capability. Requires mobile-optimized layout and offline support. See [Deferred Scope in requirements.md].
 
 ---
 
@@ -35,7 +37,7 @@ One place where existing knowledge lives *and* new knowledge grows — whether f
 **Name & Role:** Your wife — travel partner and final decision collaborator
 
 **Context:**
-Not involved in the research process at all. Enters the picture at the decision moment — sitting down together to choose between 2-3 destination options for a specific planned travel window. Needs to get a genuine feel for each option quickly without wading through research notes.
+Not involved in the research process at all. Enters the picture at the decision moment — sitting down together at the desktop to choose between 2-3 destination options for a specific planned travel window. Needs to get a genuine feel for each option quickly without wading through research notes.
 
 **Core Goal:**
 Have a real, informed conversation about destination options — understanding what each trip would actually feel like, what it costs, and what the rough shape of it looks like — so the decision feels collaborative and well-founded.
