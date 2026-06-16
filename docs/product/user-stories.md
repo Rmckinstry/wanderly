@@ -361,9 +361,8 @@ Then the status updates immediately and is reflected everywhere the trip appears
 **Edge Cases:**
 - Status can be set to any stage at any time — it does not have to advance sequentially
 - A trip can be moved back to a previous status (e.g. from `Planning` back to `Sample`)
-- Marking a trip as `Completed` does not lock the record — it remains fully editable
-- Status change does not trigger any automatic changes to content, tags, or linked records
-- Marking a trip as `Completed` within a Travel Window triggers an automatic snapshot per US-034b
+- `Completed` is a label only — it does not lock the record in any way. A `Completed` trip is fully editable indefinitely. Budget actuals, itinerary corrections, and any other post-trip updates can be made at any time without changing the status
+- Status change does not trigger any automatic changes to content, tags, or linked records, with one exception: marking a trip `Completed` within a Travel Window initializes the live snapshot per US-034b. Subsequent edits to the trip continue to update that snapshot automatically
 
 ---
 
@@ -765,7 +764,7 @@ Then that trip is visually flagged as selected, the other trips are visually mar
 ---
 
 **US-034b — Snapshot a Trip on Completion**
-*When a trip is marked as Completed, I want a snapshot of that trip automatically captured, so that I have a permanent historical record of the trip exactly as it was when we finished it.*
+*When a trip is marked as Completed, I want a snapshot of that trip captured and kept current as I continue to update it, so that the historical record always reflects what actually happened — not just what was planned.*
 
 **Priority:** P0
 
@@ -773,37 +772,34 @@ Then that trip is visually flagged as selected, the other trips are visually mar
 
 Given a trip exists within a Travel Window and its status is changed to `Completed`,
 When the status change is saved,
-Then a point-in-time snapshot of the trip is automatically captured and stored within the Travel Window, preserving the full trip state at that moment — location blocks, days, POIs, notes, budget, and photos.
+Then a snapshot of the trip is initialized and stored within the Travel Window, reflecting the full trip state — location blocks, days, POIs, notes, budget, and photos. Any subsequent edits to the trip (budget actuals, itinerary corrections, post-trip notes) automatically update the snapshot so it always reflects the current state of the completed record.
 
 **Edge Cases:**
-- The snapshot captures the complete trip state at the moment `Completed` status is set
-- Future edits to the live trip after completion do not alter the snapshot
-- The snapshot is clearly labeled with the date it was captured
-- The snapshot is read-only — it cannot be edited
-- If a trip is marked Completed outside of a Travel Window no snapshot is captured — snapshots only apply to trips within a Travel Window
-- If a trip's status is moved back from `Completed` to a previous status the snapshot is retained but clearly marked as superseded — it is not automatically deleted
+- The snapshot is not frozen at the moment `Completed` is set — it stays in sync with the live trip as edits are made. There is no penalty for updating a completed trip after the fact
+- The snapshot is labeled with the date the trip was marked `Completed`, not the date of last edit
+- The snapshot is only viewable from within the Travel Window — it is not a separate navigable record
+- If a trip is marked `Completed` outside of a Travel Window no snapshot is created — snapshots only apply to trips within a Travel Window
+- If a trip's status is moved back from `Completed` to a previous status the snapshot is retained within the Travel Window but clearly marked as superseded — it is not automatically deleted
+- There is no manual "lock" or "re-snapshot" action — the snapshot is always current by design
 
 ---
 
 **US-035 — Reference Past Travel Windows**
-*When I want to look back at a previous planning decision, I want to browse past Travel Windows and see trips exactly as they were when completed, so that I have an accurate historical record of what we experienced.*
+*When I want to look back at a previous planning decision, I want to browse past Travel Windows and see completed trips as they actually happened, so that I have an accurate historical record of what we experienced.*
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
-Given I am viewing a past Travel Window that contains a Completed trip with a snapshot,
+Given I am viewing a past Travel Window that contains a `Completed` trip,
 When I browse its contents,
-Then I can toggle between the snapshot view (trip as it was when completed) and the live view (trip as it is today), with a clear visual indicator of which mode I am in.
+Then the trip is displayed in its current state — reflecting all post-trip edits including budget actuals, itinerary corrections, and notes — clearly labeled as Completed with the date it was marked complete.
 
 **Edge Cases:**
-- Snapshot view is always read-only — no editing from within snapshot view
-- Live view remains fully editable from within the Travel Window
-- If no trip in the Travel Window has been marked Completed no snapshot exists — only live view is available
-- If a live trip has been deleted after a snapshot was taken the snapshot still displays the preserved state clearly labeled as a historical record
-- The toggle between snapshot and live is clearly labeled so it is never ambiguous which version is being viewed
-- Photos included in the snapshot are preserved even if later removed from the live trip
-- Non-completed trips in the same Travel Window show live view only with no snapshot toggle
+- The completed trip record remains fully editable from within the Travel Window — budget actuals and itinerary updates can be made at any time
+- The snapshot/live toggle is not needed and is not present — there is one version of the record and it always reflects the latest state
+- If no trip in the Travel Window has been marked `Completed` the Travel Window displays all trips in their current planning state
+- If a live trip has been deleted from the master library after completion it still displays within the Travel Window, clearly labeled as a historical record
 - Travel Windows are organized chronologically and persist indefinitely — they are never automatically deleted
 
 ---
