@@ -381,7 +381,29 @@ Then the status updates immediately and is reflected everywhere the trip appears
 - Status can be set to any stage at any time — it does not have to advance sequentially
 - A trip can be moved back to a previous status (e.g. from `Planning` back to `Sample`)
 - `Completed` is a label only — it does not lock the record in any way. A `Completed` trip is fully editable indefinitely. Budget actuals, itinerary corrections, and any other post-trip updates can be made at any time without changing the status
+- Marking a trip `Completed` makes a completion date field visible and editable per US-016b — this date is customizable and defaults to today but can be set to any date
 - Status change does not trigger any automatic changes to content, tags, or linked records
+
+---
+
+**US-016b — Set Completion Date on a Completed Trip**
+_When marking a trip as Completed, I want to set or adjust the completion date, so that historical trips and delayed updates reflect when the trip actually happened, not when I recorded it._
+
+**Priority:** P0
+
+**Acceptance Criteria:**
+
+Given I am viewing a `Completed` trip or have just marked a trip `Completed`,
+When I open or edit the completion date field,
+Then I can set the date to any date in the past or future, and the date is saved and displayed wherever the trip is referenced.
+
+**Edge Cases:**
+
+- Completion date defaults to today when a trip is first marked `Completed`, but can be changed immediately or at any time later
+- Completion date can be set to a date in the past (for historical trips added retroactively) or in the future (if a trip will happen but you want to mark it complete in advance)
+- Completion date is a free-form date field with no validation — any date is valid
+- If a trip's status is moved back from `Completed` to a previous status the completion date field is hidden but retained in the data — if the trip is marked `Completed` again the previous date is restored
+- Completion date is displayed on the trip record and in any Travel Window that contains the trip
 
 ---
 
@@ -410,22 +432,22 @@ Then the status updates immediately and is reflected in the master library and a
 ---
 
 **US-018 — Create a Budget**
-_When I want to estimate the cost of a destination or trip, I want to create a budget attached to any country, region, or trip, so that I can track costs from a rough estimate through to final actuals._
+_When I want to estimate the cost of a trip, I want to create a budget attached to it, so that I can track costs from a rough estimate through to final actuals._
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
-Given I am viewing a Country, Region, or Trip record,
+Given I am viewing a Trip record,
 When I create a new budget with at minimum a name,
-Then a budget is created linked to that record, starts empty or from a selected template, and is immediately available to add categories and line items to.
+Then a budget is created linked to that trip, starts empty or from a selected template, and is immediately available to add categories and line items to.
 
 **Edge Cases:**
 
-- A record can have multiple budgets (e.g. two budget scenarios for the same destination)
+- A trip can have multiple budgets (e.g. two budget scenarios for the same trip)
 - A budget can be created from scratch or from a saved template
 - A budget can be saved with zero categories or line items — no minimum content required
-- Budget names must be unique within the same parent record
+- Budget names must be unique within the same trip
 - No tags are applied automatically
 
 ---
@@ -475,13 +497,13 @@ Then the Difference column auto-calculates (Actual minus Budgeted) and a visual 
 ---
 
 **US-021 — View Budget Summary Snapshot**
-_When I want a quick read on trip cost, I want to see a budget summary snapshot on any record, so that I can evaluate affordability at a glance without opening the full budget._
+_When I want a quick read on trip cost, I want to see a budget summary snapshot on a trip record, so that I can evaluate affordability at a glance without opening the full budget._
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
-Given I am viewing a Country, Region, or Trip record that has a budget attached,
+Given I am viewing a Trip record that has a budget attached,
 When I view the record,
 Then the budget snapshot is visible showing total budgeted, total actual, total difference, cost per person, and cost per day — with overall Under/Over/Close indicator — without needing to open the full budget.
 
@@ -830,11 +852,12 @@ _When I want to look back at a previous planning decision, I want to browse past
 
 Given I am viewing a past Travel Window,
 When I browse its contents,
-Then all trips are displayed in their current live state — reflecting any post-trip edits — with `Completed` trips clearly badged with the date they were marked complete.
+Then all trips are displayed in their current live state — reflecting any post-trip edits — with `Completed` trips clearly badged with their completion date.
 
 **Edge Cases:**
 
 - `Completed` trips remain fully editable from within the Travel Window — there is no read-only mode for a live record
+- The completion date is customizable per US-016b and can be set to any date, including dates in the past for historical trips or in the future for planned completions
 - If no trips in the Travel Window have been marked `Completed` they display in their current planning state with no badge
 - If a `Completed` trip has been deleted from the master library it displays as a preserved historical record per US-034b
 - Travel Windows are organized chronologically and persist indefinitely — they are never automatically deleted
@@ -1391,9 +1414,9 @@ Unobtrusive status indicator showing Online / Offline / Syncing / Sync Failed. S
 | Trip Building                | 6       | 6      | 0      | 0     | 0        |
 | Budget                       | 5       | 5      | 0      | 0     | 0        |
 | Search & Discovery           | 7       | 4      | 3      | 0     | 0        |
-| Travel Windows               | 8       | 7      | 1      | 0     | 0        |
+| Travel Windows               | 9       | 8      | 1      | 0     | 0        |
 | Presentation Mode            | 7       | 6      | 1      | 0     | 0        |
 | Tips & Lessons Learned       | 6       | 0      | 6      | 0     | 0        |
 | Tagging & Organization       | 9       | 0      | 7      | 2     | 0        |
 | Mobile & Offline             | 6       | 0      | 0      | 0     | 6        |
-| **Total**                    | **65**  | **36** | **21** | **2** | **6**    |
+| **Total**                    | **66**  | **37** | **21** | **2** | **6**    |
