@@ -1,4 +1,4 @@
-# Travel App — User Personas
+# Wanderly — User Personas
 
 ---
 
@@ -27,7 +27,7 @@ One place where existing knowledge lives *and* new knowledge grows — whether f
 - Travel Windows formalize the shortlisting and decision workflow already happening informally
 
 **Deferred use case — Mobile Reference:**
-Accessing accumulated research while actually traveling (addresses, itinerary details, POI notes in-destination) is a planned future capability. Requires mobile-optimized layout and offline support. See [Deferred Scope in requirements.md].
+Accessing accumulated research while actually traveling (addresses, itinerary details, POI notes in-destination) is a planned future capability. Requires mobile-optimized layout and offline support. See [Deferred Scope in requirements.md](requirements.md#deferred-scope).
 
 ---
 

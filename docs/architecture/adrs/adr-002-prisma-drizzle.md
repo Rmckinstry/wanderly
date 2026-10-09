@@ -25,7 +25,8 @@ for the decision.
 
 ## Decision
 
-Use **Drizzle ORM 0.36.x** with **Drizzle Kit 0.28.x** for migrations.
+Use **Drizzle ORM** with **Drizzle Kit** for migrations. Versions are in the Tech Stack
+table in `architecture.md`.
 
 ---
 
@@ -75,8 +76,9 @@ complex schema with 15+ tables.
 
 - No generated client — schema changes are reflected immediately without a build step
 - Type-safe queries written directly in TypeScript against the Drizzle schema
-- Drizzle Kit handles versioned migration files cleanly; migrations run on app startup
-- Lighter Electron bundle — no Prisma engine binary
+- Drizzle Kit generates versioned migration files cleanly; Drizzle ORM's runtime migrator
+  applies them on app startup
+- Lighter Electron bundle — no generated Prisma client to package
 - SQL-close syntax; queries are auditable and predictable during solo maintenance
 
 **Negative:**
@@ -88,3 +90,9 @@ complex schema with 15+ tables.
   to Prisma at that point would require rewriting the repository layer
 - `@prisma/adapter-better-sqlite3` would have been viable; this decision is a preference
   call, not a hard technical requirement
+
+---
+
+## Revision History
+
+- **2026-10-08** — version numbers removed from the Decision (the Tech Stack table in `architecture.md` is the single source); the last reference to a "Prisma engine binary" corrected, completing the rationale correction described in Context. The decision itself is unchanged.

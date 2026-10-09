@@ -19,7 +19,7 @@ If the decision fails this gate, tell the user and recommend documenting the cho
 
 ## Step 2 — Assign the next ADR number
 
-Look in `docs/architecture/decisions/` for existing `ADR-NNN-*.md` files. Use the next sequential 3-digit number.
+Look in `docs/architecture/adrs/` for existing `adr-NNN-*.md` files. Use the next sequential 3-digit number.
 
 ## Step 3 — Apply the template
 
@@ -49,7 +49,7 @@ Look in `docs/architecture/decisions/` for existing `ADR-NNN-*.md` files. Use th
 
 ## Step 4 — Save and cross-link
 
-- Write to `docs/architecture/decisions/ADR-NNN-short-title.md` (kebab-case title, ≤6 words)
+- Write to `docs/architecture/adrs/ADR-NNN-short-title.md` (kebab-case title, ≤6 words)
 - Add a reference from the main architecture document at the location where the relevant choice is documented
 - If this ADR supersedes a prior one, set the prior one's status to `Superseded by ADR-NNN` and link back from the new ADR's Context section
 

@@ -1,4 +1,4 @@
-# Travel App — User Stories
+# Wanderly — User Stories
 
 ## Priority Definitions
 
@@ -12,7 +12,7 @@
 - **Rich text formatting** is supported on all free-form notes fields across every content type (bold, italic, underline, bullet points, numbered lists, hyperlinks)
 - **Status is always manual** — never auto-derived from content or actions
 - **No required fields beyond a name/title** on any content type — all records support progressive enrichment
-- **Desktop browser only** — no mobile layout or touch interaction required in this version
+- **Desktop app only** (macOS and Windows) — no mobile layout or touch interaction required in this version
 
 ---
 
@@ -56,7 +56,7 @@ Then the region is automatically linked to that country, appears nested under it
 - Region creation is only available from within a country view — it cannot be created from global or uncontextualized screens
 - If I try to save a region with no name creation is blocked and I am prompted for a name
 - Region names must be unique within the same country — two regions in Thailand cannot both be called "North" — but the same region name can exist across different countries
-- If the parent country is deleted the app warns me that all nested regions, cities, and POIs will be affected before confirming deletion
+- If the parent country is deleted the app warns me that all nested regions, cities, and POIs will be affected before confirming deletion — a country that is used in a trip itinerary cannot be deleted until it is removed from those trips (see US-012)
 - A country can have zero regions — cities and POIs can attach directly to a country if no region structure is needed
 - No tags are applied automatically
 
@@ -188,6 +188,7 @@ Then a rich text editor is available supporting at minimum: bold, italic, underl
 - Pasting content from OneNote or a web browser should preserve basic formatting where possible — if formatting cannot be preserved plain text is pasted without silent data corruption
 - An empty notes field shows a subtle prompt but never forces formatting on the user
 - Rich text applies to notes fields only — name and tag fields remain plain text
+- A budget has one rich text notes field for the budget as a whole; the short note on an individual line item is plain text
 
 ---
 
@@ -247,29 +248,31 @@ Then changes are saved immediately and the tip is correctly surfaced in relevant
 
 - Changing scope from Destination-specific to General removes the destination link — the app warns before doing so
 - A Lesson Learned can be linked to a Completed Trip retroactively — the link is never required at creation
-- If a linked destination is deleted the tip is not deleted — it moves to an Unlinked state
+- If a linked destination is deleted the tip is not deleted — it moves to an Unlinked state, remains fully editable, and shows what it used to be linked to
 - No tags are applied automatically
 
 ---
 
-**US-011 — Add Images to Any Content Type**
-_When I want to give a destination or POI a visual identity, I want to attach images to any content record, so that they support the presentation mode and give a feel for the place._
+**US-011 — Add Images to Destinations, POIs and Trips**
+_When I want to give a destination or POI a visual identity, I want to attach images to a content record, so that they support the presentation mode and give a feel for the place._
 
 **Priority:** P1
 
 **Acceptance Criteria:**
 
-Given I am viewing any content record,
+Given I am viewing a Country, Region, City, POI, or Trip record,
 When I attach one or more images,
 Then the images are stored with the record and I can designate any image as the hero image used in presentation mode.
 
 **Edge Cases:**
 
-- Multiple images can be attached to any record
+- Multiple images can be attached to any of these records
 - I can designate any image as the hero image — it does not default to the first one without my input
 - If no image is attached presentation mode shows a placeholder rather than a broken image
 - Images can be removed or reordered at any time
 - No automatic tagging or categorization of images
+- Images can be added with a file picker or by dragging files onto the record
+- Tips, Lessons Learned, Budgets and Travel Windows do not take images in this version
 
 ---
 
@@ -296,6 +299,9 @@ Then the block appears in the itinerary in sequence, the total trip duration is 
 - A trip can mix blocks at different geographic levels (e.g. "Italy — 3 days" alongside "Chiang Mai — 4 days")
 - A block can be refined over time — a country block can be replaced by more specific region or city blocks as planning matures
 - Deleting a block does not delete the referenced country, region, or city from the master library
+- A country stays linked to the trip for as long as any of its blocks use it — it can be unlinked from the trip only after those blocks are removed or pointed elsewhere
+- A country used by any trip's location block cannot be deleted from the master library — the app lists the trips that use it so I can remove it from them first
+- If a region or city used by a block is deleted from the master library the app warns me first, and the block is kept and widened to its parent level (a Chiang Mai block becomes a Thailand block) with its duration and days intact
 - Multiple blocks can reference the same location (e.g. returning to Rome at the end of an Italy trip)
 - A trip can have a single location block (e.g. a Tuscany-only trip)
 
@@ -319,7 +325,9 @@ Then the block expands into numbered days matching the assigned duration, the lo
 - Expanding a block does not automatically populate days with POIs — days start empty
 - If I reduce the duration of a block after expanding the app warns me that day entries beyond the new duration will be removed
 - A trip can exist in a mixed state — some blocks expanded into days, others still in location-block mode
-- A country or region block expanded into days can have its days later reorganized into sub-blocks if needed
+- A country or region block expanded into days can have its days later reorganized into sub-blocks if needed — by splitting the block in two at a chosen day, with each part keeping its days
+- Individual days can be added, removed, reordered, and moved between expanded blocks of the same trip — the block's duration always matches its number of days
+- An expanded block can be collapsed back to location-block mode — the app warns me first if any of its days have content
 
 ---
 
@@ -401,8 +409,8 @@ Then I can set the date to any date in the past or future, and the date is saved
 
 - Completion date defaults to today when a trip is first marked `Completed`, but can be changed immediately or at any time later
 - Completion date can be set to a date in the past (for historical trips added retroactively) or in the future (if a trip will happen but you want to mark it complete in advance)
-- Completion date is a free-form date field with no validation — any date is valid
-- If a trip's status is moved back from `Completed` to a previous status the completion date field is hidden but retained in the data — if the trip is marked `Completed` again the previous date is restored
+- Completion date accepts any valid calendar date — there is no restriction on how far in the past or future it is
+- If a trip's status is moved back from `Completed` to a previous status the completion date field is hidden and cannot be edited, but is retained in the data — if the trip is marked `Completed` again the previous date is restored
 - Completion date is displayed on the trip record and in any Travel Window that contains the trip
 
 ---
@@ -445,6 +453,7 @@ Then a budget is created linked to that trip, starts empty or from a selected te
 **Edge Cases:**
 
 - A trip can have multiple budgets (e.g. two budget scenarios for the same trip)
+- One budget per trip is the primary budget — the first one created by default, changeable at any time. The primary is the one shown in presentation mode and the comparison view
 - A budget can be created from scratch or from a saved template
 - A budget can be saved with zero categories or line items — no minimum content required
 - Budget names must be unique within the same trip
@@ -511,7 +520,9 @@ Then the budget snapshot is visible showing total budgeted, total actual, total 
 
 - If multiple budgets are attached the snapshot shows each separately with its name
 - Cost per person requires number of travelers to be set — if not set displays as incomplete
-- Cost per day requires trip duration to be set — if not set displays as incomplete
+- Cost per day requires every location block on the trip to have a duration — if any is missing it displays as incomplete
+- An amount within the Close threshold of its budget shows as Close rather than Under or Over; an exact match is Close
+- While only some line items have actuals, the difference and indicator compare only those items and are labeled as partial
 - Snapshot is visible in presentation mode
 - Snapshot reflects the most recently updated figures in real time
 
@@ -615,7 +626,7 @@ _When I'm adding locations or POIs to a trip itinerary, or navigating a large co
 **Acceptance Criteria:**
 
 Given I am in the trip builder OR viewing a country, region, or city record,
-When I trigger in-context search (via the search UI or Ctrl+F),
+When I trigger in-context search (via the search UI or Ctrl+F / Cmd+F),
 Then results are scoped to the current context — trip-relevant content when in the trip builder, and content within the current record when browsing a country/region/city.
 
 **Edge Cases:**
@@ -627,7 +638,7 @@ Then results are scoped to the current context — trip-relevant content when in
 - Selecting a result in a country record navigates to or highlights that content within the record
 - If a searched POI doesn't exist yet I can create it inline from trip builder search without fully leaving the builder
 - Recently used POIs and locations surface at the top of trip builder search before a keyword is entered
-- Ctrl+F behavior (app intercept vs. browser native) to be determined by UX best practice research before implementation
+- Ctrl+F (Cmd+F on macOS) is handled by the app and opens in-context search here — see US-029
 
 ---
 
@@ -665,9 +676,9 @@ Then only content records carrying those tags are shown with each result display
 
 **Edge Cases:**
 
-- Tag filters are contextual — filtering by a POI tag only surfaces POIs
+- Tag filters are contextual — filtering by a POI tag (e.g. `Must Do`) only surfaces POIs
 - Multiple tags can be applied simultaneously — results match all selected tags
-- Tag filters can be combined with keyword search and status filters
+- Tag filters can be combined with keyword search and status filters — a keyword is not required
 - If no content matches the selected tags an empty state is shown
 - Removing a tag filter immediately restores unfiltered results
 - Filter options only surface tag values that exist in the library
@@ -682,15 +693,14 @@ _When I want to search quickly without reaching for the mouse, I want Ctrl+F to 
 **Acceptance Criteria:**
 
 Given I am anywhere in the app,
-When I press Ctrl+F,
+When I press Ctrl+F (Cmd+F on macOS),
 Then search is triggered in the most relevant context — in-context search if I am within a trip builder or country record, global search if I am in the master library or a neutral screen.
 
 **Edge Cases:**
 
-- Ctrl+F behavior (app intercept vs. browser native) to be determined by UX best practice research before implementation
+- The app handles the shortcut itself — as a desktop app there is no browser find bar to fall back to
 - The triggered search state is dismissable without losing current position in the app
-
-**Open Decision:** Determine whether intercepting Ctrl+F is best practice for a web app or whether deferring to browser native find-in-page is the better convention. Implementation follows that finding.
+- Highlighting matches within the text of a single long note (find-in-page) is not included in this version
 
 ---
 
@@ -712,6 +722,7 @@ Then the Travel Window is created, appears in the Travel Windows section, and is
 **Edge Cases:**
 
 - A Travel Window requires at minimum a name — target date is strongly recommended but not blocked if missing
+- The target date can carry an optional label shown in its place (e.g. "November 2027") — Travel Windows are always ordered by the date itself, never by the label
 - Multiple Travel Windows can exist simultaneously
 - Travel Window names must be unique — duplicates are blocked
 - A Travel Window can be created with no trips attached yet
@@ -776,7 +787,7 @@ Then the full trip record is editable from within the Travel Window view, and al
 
 - Edits made from within a Travel Window are the same as edits made from the master library — there is no separate copy
 - All content types within the trip are editable — location blocks, days, POIs, notes, budget, status
-- Editing does not affect any existing snapshots — snapshots are only created on `Completed` status change
+- Editing never touches a preserved historical record — those are only created when a `Completed` trip is deleted (US-034b) and are read-only
 - Exiting edit mode returns me to the Travel Window view without losing position
 
 ---
@@ -840,6 +851,9 @@ Then the trip's data is still displayed within the Travel Window, clearly labele
 - A clear visual indicator distinguishes a preserved deleted trip from an active live trip
 - Deleting a completed trip from the master library still requires the standard deletion confirmation warning that it is referenced in one or more Travel Windows
 - Trips deleted before being marked `Completed` are removed from Travel Windows without preservation — preservation only applies to `Completed` trips
+- The preserved record keeps everything the presentation view shows — itinerary, POI details, budgets, tips, and photos — and stays intact even if those POIs or countries are later edited or deleted
+- A `Completed` trip that is not in any Travel Window is deleted without preservation — there is nowhere to keep it
+- The preserved record is removed only when the last Travel Window containing it is deleted, and the app warns me before that happens
 
 ---
 
@@ -965,10 +979,10 @@ Then it shows total estimated cost, cost per person, and cost per day clearly an
 **Edge Cases:**
 
 - If no budget is attached the snapshot area shows "Budget not yet estimated"
-- Cost per person and cost per day only display if number of travelers and trip duration are set
+- Cost per person and cost per day only display if number of travelers is set and every location block has a duration
 - Budget snapshot in comparison view is consistently positioned across all trips
 - Full budget detail is not shown in presentation mode — snapshot only
-- If multiple budgets are attached the most recently updated budget snapshot is shown with an indicator that more detail is available
+- If multiple budgets are attached the trip's primary budget snapshot is shown with an indicator that more detail is available
 
 ---
 
@@ -1012,7 +1026,7 @@ Then the following behaviors are supported:
 **Edge Cases:**
 
 - Exit control is always visible on screen but unobtrusive
-- Keyboard shortcuts are consistent and do not conflict with browser or OS defaults where possible
+- Keyboard shortcuts are consistent and do not conflict with OS defaults where possible
 - A visible keyboard shortcut reference is accessible from within presentation mode without disrupting the presentation
 - Exiting presentation mode does not trigger any status changes or data updates
 - If presentation mode is accidentally exited re-entering returns to the beginning of the presentation
@@ -1152,24 +1166,26 @@ Then only tips with General scope are shown, organized by date added with the mo
 
 ---
 
-**US-055 — Convert a Tip to a Lesson Learned**
-_When a tip I captured before visiting a destination turns out to be confirmed or contradicted by real experience, I want to convert it or add a Lesson Learned follow-up, so that my knowledge base reflects reality not just research._
+**US-055 — Follow Up a Tip with a Lesson Learned**
+_When a tip I captured before visiting a destination turns out to be confirmed or contradicted by real experience, I want to add a Lesson Learned as a follow-up to it, so that my knowledge base reflects reality not just research._
 
 **Priority:** P1
 
 **Acceptance Criteria:**
 
-Given I am viewing a destination-specific Tip,
-When I convert it to a Lesson Learned or add a Lesson Learned as a follow-up,
-Then the original tip is preserved and the Lesson Learned is linked to it, clearly showing the evolution from pre-trip research to post-trip reality.
+Given I am viewing a Tip,
+When I add a Lesson Learned as a follow-up,
+Then a new Lesson Learned is created and linked to the original tip, the original tip is left unchanged, and the two are shown together — clearly showing the evolution from pre-trip research to post-trip reality.
 
 **Edge Cases:**
 
-- Converting a Tip to a Lesson Learned prompts for an optional Completed Trip link
-- The original Tip content is preserved — conversion is non-destructive
-- If added as a follow-up both the Tip and the Lesson Learned exist independently but are visually linked
-- A Lesson Learned follow-up inherits the destination link of the original Tip
-- A General Tip can be converted to a General Lesson Learned without requiring a destination link
+- Adding a follow-up prompts for an optional Completed Trip link
+- The original Tip is never modified or replaced — there is no in-place conversion
+- The Tip and the Lesson Learned exist independently but are visually linked
+- A Lesson Learned follow-up inherits the scope and destination link of the original Tip — a General Tip yields a General Lesson Learned
+- A Tip can have more than one follow-up (for example, lessons from two different trips)
+- If the original Tip is later deleted the Lesson Learned is kept and simply stands on its own
+- A tip that is Unlinked must be reassigned to a destination before a follow-up can be added
 
 ---
 
@@ -1254,8 +1270,8 @@ Then I see POI-specific tag categories (POI Type, Price Range, Must-Do Status) a
 **Edge Cases:**
 
 - Tags are never applied automatically — always manual
-- A POI can have multiple POI Type tags (e.g. both `Museum` and `Historic Site`)
-- Must-Do Status is a single select — only one value applies at a time
+- A POI can have multiple POI Type tags (e.g. both `Hike` and `Viewpoint`)
+- Must-Do Status is a single select — only one value applies at a time; choosing another value replaces the current one
 - Tags can be removed at any time without affecting the POI record or any trips it is referenced in
 - No tags are required — a POI is valid with zero tags
 
@@ -1282,25 +1298,9 @@ Then I see trip-specific tag categories (Vibe, Activity Type, Budget Tier, Trip 
 
 ---
 
-**US-059 — Filter Library by Tag**
-_When I want to find all content matching a specific attribute, I want to filter my library by one or more tags, so that I can discover relevant content across destinations quickly._
+**US-059 — Filter Library by Tag** _(Merged into US-028)_
 
-**Priority:** P1
-
-**Acceptance Criteria:**
-
-Given I am viewing the master library or a country record,
-When I apply one or more tag filters,
-Then only content records carrying those tags are shown with each result displaying its content type and parent context.
-
-**Edge Cases:**
-
-- Tag filters are contextual to content type — filtering by `Must Do` only surfaces POIs
-- Multiple tags can be applied simultaneously — results match all selected tags
-- Tag filters can be combined with keyword search and status filters
-- If no content matches the selected tags an empty state is shown
-- Removing a tag filter immediately restores unfiltered results
-- Filter options only surface tag values that exist in the library
+This story duplicated US-028 — Filter Master Library by Tag — and has been merged into it. The ID is retired and is not reused.
 
 ---
 
@@ -1369,9 +1369,9 @@ Then the new category appears in the tag selector for the assigned content types
 
 ## 10. Mobile & Offline — Deferred
 
-> **All stories in this section are deferred.** This version of the app is a local desktop web app. Mobile layout, offline storage, and multi-device sync are not in scope. Stories are documented here for future reference when expanding to a hosted, multi-device version.
+> **All stories in this section are deferred.** This version of the app is a local desktop application. Mobile layout, offline storage, and multi-device sync are not in scope. Stories are documented here for future reference when expanding to a hosted, multi-device version.
 >
-> **Prerequisites for activation:** cloud hosting, authentication, multi-device sync infrastructure, offline-first architecture (service workers or native app wrapper), and responsive UI redesign. See [Deferred Scope in requirements.md] for full expansion notes.
+> **Prerequisites for activation:** cloud hosting, authentication, multi-device sync infrastructure, offline-first architecture (service workers or native app wrapper), and responsive UI redesign. See [Deferred Scope in requirements.md](requirements.md#deferred-scope) for full expansion notes.
 
 ---
 
@@ -1410,13 +1410,18 @@ Unobtrusive status indicator showing Online / Offline / Syncing / Sync Failed. S
 | Section                      | Stories | P0     | P1     | P2    | Deferred |
 | ---------------------------- | ------- | ------ | ------ | ----- | -------- |
 | Content Creation             | 6       | 5      | 1      | 0     | 0        |
-| Content Enrichment & Editing | 5       | 3      | 2      | 0     | 0        |
-| Trip Building                | 6       | 6      | 0      | 0     | 0        |
+| Content Enrichment & Editing | 6       | 4      | 2      | 0     | 0        |
+| Trip Building                | 7       | 7      | 0      | 0     | 0        |
 | Budget                       | 5       | 5      | 0      | 0     | 0        |
 | Search & Discovery           | 7       | 4      | 3      | 0     | 0        |
 | Travel Windows               | 9       | 8      | 1      | 0     | 0        |
 | Presentation Mode            | 7       | 6      | 1      | 0     | 0        |
 | Tips & Lessons Learned       | 6       | 0      | 6      | 0     | 0        |
-| Tagging & Organization       | 9       | 0      | 7      | 2     | 0        |
+| Tagging & Organization       | 8       | 0      | 6      | 2     | 0        |
 | Mobile & Offline             | 6       | 0      | 0      | 0     | 6        |
-| **Total**                    | **66**  | **37** | **21** | **2** | **6**    |
+| **Total**                    | **67**  | **39** | **20** | **2** | **6**    |
+
+Counts include lettered stories (US-007b, US-016b, US-032b, US-034b, US-056b, US-056c) and
+exclude the retired US-059. Story IDs are stable identifiers, not an ordering: sections
+are grouped by theme, so the deferred mobile stories (US-044 to US-049) appear after
+US-062.
