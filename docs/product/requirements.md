@@ -1,4 +1,4 @@
-# Travel App — Vision & Requirements
+# Wanderly — Vision & Requirements
 
 ---
 
@@ -10,7 +10,7 @@ A personal travel intelligence hub where years of curated research, planning, an
 
 ## Deployment Context
 
-**This version is a local desktop web app.** It runs on your machine (localhost), uses local storage (SQLite or flat-file), requires no internet connection to function, and is single-user with no authentication. All data lives on your computer.
+**This version is a local desktop application for macOS and Windows.** It is installed and runs on your machine, stores everything locally (a SQLite database plus image files), requires no internet connection to function, and is single-user with no authentication. All data lives on your computer.
 
 Cloud hosting, multi-device sync, authentication, and mobile support are explicitly deferred. See [Deferred Scope](#deferred-scope) at the end of this document.
 
@@ -84,18 +84,18 @@ Regions and Cities do not have formal status — depth is implied by content vol
   Free-form tags and expanded categories are a planned P2 enhancement.
 
 - **FR5a** — Global search across all content types, filterable by type, country, tag, and status.
-- **FR5b** — In-context search applies in two places: (1) the trip builder, scoped by default to countries referenced in the trip with an option to expand to the full library; (2) within country, region, or city records, scoped to all content nested under that record. Ctrl+F triggers in-context search — final behavior (app intercept vs. browser native) to be determined by UX best practice research.
+- **FR5b** — In-context search applies in two places: (1) the trip builder, scoped by default to countries referenced in the trip with an option to expand to the full library; (2) within country, region, or city records, scoped to all content nested under that record. Ctrl+F (Cmd+F on macOS) opens search in the most relevant context: in-context search in those two places, global search elsewhere.
 - **FR6** — Manual status indicators at Country level (`Wishlist → Researching → Sampling → Planning`) and Trip level (`Sample → Planning → Ready → Completed`). Status is never auto-derived.
 
 ### Trip Planning
 
-- **FR7** — Itinerary builder supports two modes: high-level location blocks with rough durations, and day-by-day detailed view. Location blocks can be set at any geographic level — Country, Region, or City. A trip can mix blocks at different levels and transition fluidly from location-block mode to day-by-day as planning matures. A trip can exist in a mixed state with some blocks expanded into days and others not. Location-block mode maps to `Sample` status; day-by-day maps to `Planning` and beyond.
-- **FR8** — Budget is a single flexible content type with no Rough vs. Detailed distinction. It starts as simple as a name and grows in detail over time. Structure: customizable categories containing line items, each with three columns — Budgeted/Estimate, Actual, Difference. Visual indicators (Under, Over, Close) appear at line item, category, and summary levels. Close threshold is user-configurable, defaulting to 10%. A summary snapshot (total budgeted, total actual, total difference, cost per person, cost per day) is auto-calculated and surfaced in presentation mode. All amounts are in USD. Budget templates allow reuse of category structure across trips without carrying over amounts.
+- **FR7** — Itinerary builder supports two modes: high-level location blocks with rough durations, and day-by-day detailed view. Location blocks can be set at any geographic level — Country, Region, or City. A trip can mix blocks at different levels and transition fluidly from location-block mode to day-by-day as planning matures. A trip can exist in a mixed state with some blocks expanded into days and others not. Location-block mode is typical of a `Sample` trip and day-by-day detail of `Planning` and beyond, but the itinerary mode never sets or changes a trip's status — status is always manual (FR6).
+- **FR8** — Budget is a single flexible content type with no Rough vs. Detailed distinction. It starts as simple as a name and grows in detail over time. Structure: customizable categories containing line items, each with three columns — Budgeted/Estimate, Actual, Difference. Visual indicators (Under, Over, Close) appear at line item, category, and summary levels. Close threshold is user-configurable, defaulting to 10%. A summary snapshot (total budgeted, total actual, total difference, cost per person, cost per day) is auto-calculated and surfaced in presentation mode. Cost per day is shown only when every location block on the trip has a duration. A trip can have several budgets; one is marked as its primary budget, and that is the one presentation mode and the comparison view show. All amounts are in USD. Budget templates allow reuse of category structure across trips without carrying over amounts.
 
 ### Presentation Mode
 
-- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (all shortlisted trips side by side). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab).
-- **FR10** — Presentation mode includes a side-by-side comparison view of 2-3 shortlisted trips within a Travel Window.
+- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (FR10). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab).
+- **FR10** — The comparison view shows all shortlisted trips in a Travel Window side by side, with the same information in the same position for each: trip concept, location summary, budget snapshot, vibe tags, and a hero photo. It is designed for 2-3 trips and needs at least two.
 - **FR11** — Travel Window is a first-class concept. Contains a target travel date/window and 2-3 shortlisted trips referenced (not copied) from the master library. Trips are fully editable from within the Travel Window view — edits reflect immediately in the master library. A chosen trip can be flagged within the Travel Window; unchosen trips remain visible and intact. Travel Windows persist permanently as historical records and are never automatically deleted or hidden. `Completed` trips display in their current live state with a completion date badge — the completion date is user-set and defaults to today but can be changed to any date.
 - **FR12** — Presentation mode requires zero explanation to navigate. A non-user should be able to scroll through it intuitively without guidance.
 
@@ -112,9 +112,10 @@ Regions and Cities do not have formal status — depth is implied by content vol
 ## Non-Functional Requirements
 
 - **NFR1** — Search and filtering must feel instant. This is a reference tool used mid-planning.
-- **NFR2** — Desktop/laptop browser is the only supported environment (P0). The app is not required to be responsive or functional on mobile. See [Deferred Scope](#deferred-scope) for mobile plans.
+- **NFR2** — The desktop app on a desktop or laptop computer (macOS and Windows) is the only supported environment (P0). The app is not required to be responsive or functional on mobile. See [Deferred Scope](#deferred-scope) for mobile plans.
 - **NFR3** — Single-user, no authentication required. The app assumes it is running on the owner's local machine.
-- **NFR4** — Local data storage only. Data persists via SQLite or a structured flat-file format on the local filesystem. No cloud database, no sync service.
+- **NFR4** — Local data storage only. Data persists in a SQLite database on the local filesystem, with images stored as files alongside it. No cloud database, no sync service.
+- **NFR6** — The library must survive failure. The app takes automatic local snapshots of the database (before every schema migration and daily) and can keep a full copy of the database and all images in a folder the user chooses, such as an external drive. Restoring from either is available in-app, including on a fresh install on a new machine. Backups stay on storage the user controls; the app uploads nothing.
 - **NFR5** _(P2)_ — Full data export in JSON format, preserving content relationships. Lower urgency in a local-first context (data is already portable) but worth building to avoid future lock-in.
 
 ---
@@ -140,7 +141,7 @@ The following capabilities are explicitly out of scope for the local version and
 
 ### Cloud Hosting & Authentication
 
-**What it is:** Moving the app from localhost to a hosted URL, with a login system so the data is accessible from anywhere.
+**What it is:** Moving the app from a local desktop application to a hosted URL, with a login system so the data is accessible from anywhere.
 **Why deferred:** Adds infrastructure complexity (hosting, auth provider, secrets management) with no benefit for a single-user local tool.
 **What it unlocks when built:** Remote access, sharing, and the ability to support additional users.
 **Rough prerequisites:** Backend API layer, auth provider integration (e.g. Auth0 or Supabase Auth), cloud database migration from local SQLite.

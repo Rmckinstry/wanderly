@@ -23,7 +23,8 @@ mass-distributed commercial product.
 
 ## Decision
 
-Use **Electron 33.x** as the app shell.
+Use **Electron** as the app shell. The version is in the Tech Stack table in
+`architecture.md`.
 
 ---
 
@@ -73,8 +74,17 @@ additional runtime or context switch.
 
 - Bundle size: ~150MB installer vs ~10MB for Tauri — accepted; irrelevant for this use case
 - Memory footprint: Electron ships its own Chromium — accepted; single-user desktop tool
-- `better-sqlite3` is a native module requiring rebuild against Electron's Node ABI
-  via `electron-rebuild` — documented as Open Action Item B in `architecture.md`
+- `better-sqlite3` and Sharp are native modules that need packaging care (unpacking
+  from the ASAR archive, correct binary per target) — see Native Modules and Packaging
+  and Open Action Item B in `architecture.md`
+- Electron supports only its latest three majors, so the app shell needs a major
+  upgrade about twice a year to stay on a supported line
 - Electron's security posture requires discipline (nodeIntegration: false,
   contextIsolation: true) — enforced via BrowserWindow configuration; documented
   in the Security section of `architecture.md`
+
+---
+
+## Revision History
+
+- **2026-10-08** — version number removed from the Decision (the Tech Stack table in `architecture.md` is the single source); native-module and support-window consequences updated. The decision itself is unchanged.
