@@ -48,7 +48,7 @@ Serves:      US-005, US-012, US-013, US-014, US-015, US-016, US-016b, US-058 (P1
 Components:  TopBar, Toolbar (`contextual`), TagChip, Menu (status), TripStatus, ItineraryBlock (incl. `travel`), DayRow, PoiCard (`day`), RichTextEditor (`inline`), BudgetSnapshot (`panel`), Button, SegmentedControl (none), PickerPopover, SearchOverlay (`trip-builder`), ConfirmDialog, EmptyState, Toast
 
 States:
-- default — header: title (`page-title`, click to rename), mono meta "12+ days · 4 stops · 2 travel · departs Day 0 evening", country chips + "+ Country", status Menu button at the right ("● Planning ▾"). Toolbar band. Above the itinerary: "Itinerary · 6 blocks · 1 expanded" with quiet "Expand all ⌥⌘↓" / "Collapse all ⌥⌘↑". Itinerary: an ordered list of ItineraryBlocks (location and travel). Right column (320px): Budget panel (BudgetSnapshot `panel`: "Primary · 1 of 2", "Shared estimate", `money-lg` total, Per day, split bar + legend, "Open full budget →"), then "In Travel Windows".
+- default — header: title (`page-title`, click to rename), mono meta "12+ days · 4 stops · 2 travel", country chips + "+ Country", status Menu button at the right ("● Planning ▾"). Toolbar band. Above the itinerary: "Itinerary · 6 blocks · 1 expanded" with quiet "Expand all ⌥⌘↓" / "Collapse all ⌥⌘↑". Itinerary: an ordered list of ItineraryBlocks (location and travel). Right column (320px): Budget panel (BudgetSnapshot `panel`: "Primary · 1 of 2", "Shared estimate", `money-lg` total, Per day, split bar + legend, "Open full budget →"), then "In Travel Windows".
 - nothing selected — Toolbar: + Location block · + Travel block (left), More ▾ (right).
 - block selected — Toolbar leads with the chip "Selected · Chiang Mai · 6 days", divider, block actions (Collapse to block / Expand to days, Set duration, Split at day…, Remove block), divider, + Travel block, + Location block. Block gets the 2px `accent` outline.
 - day selected — chip "Selected · Day 4", actions: + POI, + Note, Move to…, Remove day.
@@ -62,7 +62,7 @@ States:
 
 Interactions:
 - + Location block → PickerPopover of places in the linked countries (countries, regions, cities, with counts); picking inserts after the selected block (or at the end) and selects it.
-- + Travel block → inserts a travel block (mode Menu: Flight, Train, Bus, Ferry, Drive; From / To free text; duration whole days or 0; notes). If inserted first with 0 days it is Day 0 ("Day 0 · evening"); later 0-day travel shows "overnight" / "same day".
+- + Travel block → inserts a travel block (mode Menu: Flight, Train, Bus, Ferry, Drive; From / To free text; duration whole days or 0; notes). If inserted first with 0 days it is Day 0; later 0-day travel shows the days it sits between ("Day 2→3"). The header shows no automatic notes (D-47) — the person writes their own in the block's notes field (e.g. "leaves after work").
 - + Country → PickerPopover of all countries with "New country '…'" at the bottom.
 - Expand to days → the block opens into DayRows numbered across the trip ("Days 3–8"); days start empty (US-013). Collapse to block → if any day has content: ConfirmDialog `warning` "Collapse Chiang Mai? Its 6 days keep their notes and POIs, hidden until you expand again." — nothing is deleted (open question C).
 - Expand all / Collapse all → applies to every location block with a duration; blocks without duration and travel blocks are skipped; the count updates live.
@@ -113,9 +113,9 @@ Edge cases:
 
 Handoff notes:
 - Itinerary column max 780px; right column 320px; gutter `space-14`.
-- Block header 48px min-height, `space-3` padding; travel blocks `sidebar` fill with dashed `border-control`; mode TypeLabel first.
+- Block header 48px min-height, `space-3` padding. Order (D-46): grip · day column (80px, left-aligned: "Day 0", "Days 1–2", "Day 2→3", "Days 3–8", "Day 9+", "4 days") · location · right group with tags and actions only (mode TypeLabel, Expand to days / Set duration); no automatic notes and no separate duration (D-47). A stop whose position is unknown shows its length ("4 days") in the day column. Travel blocks: `sidebar` fill, dashed `border-control`.
 - Selected block: 2px `accent` outline (not a fill). Selected PoiCard: 1px `accent` border + 1px `accent` ring.
 - PoiCards inside a block use `radius-sm`; blocks `radius-lg` (1:2).
-- Day number column 64px; DayRow padding `space-3`.
+- DayRow: day label in the same 80px column, indented 44px (grip 20 + gap 12 + padding 12) so block headers and days share one left edge; DayRow padding `space-3` otherwise.
 - Grip: drawn 6-dot icon, 20×24 hit area, `text-muted`.
 - Expanded state per trip is remembered (handoff 14).
