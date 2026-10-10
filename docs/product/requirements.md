@@ -41,7 +41,7 @@ Country
 
 **First-class content types:**
 
-- **Country** — top-level container. It has no status of its own: how deep the research goes shows in the counts of what sits inside it
+- **Country** — top-level container, tracks research status
 - **Region** — organizational container within a country
 - **City** — primary research unit; depth implied by content inside it
 - **POI (Point of Interest)** — specific place, experience, restaurant, activity. Can attach to a Country, Region, or City — city-level attachment is not required
@@ -50,16 +50,17 @@ Country
 - **Tip / Lesson Learned** — scoped as General or Destination-specific; typed as Tip or Lesson Learned. Both types can be General or Destination-specific.
 - **Travel Window** — named planning event (e.g. "November 2027") containing shortlisted trips. Persists permanently as a historical record.
 
-**How the content is laid out in the app.** "The library" means everything the app stores. Its two top-level working sections are **Countries** (the master list — regions, cities, and POIs live inside a country) and **Trips** (a sibling section, not something nested under Countries). Travel Windows, Tips, and Settings are separate sections.
-
 ---
 
 ## Status Model
 
+**Country status** — tracks research investment (set manually):
+`Wishlist` → `Researching` → `Sampling` → `Planning`
+
 **Trip status** — tracks lifecycle (set manually):
 `Sample` → `Planning` → `Ready` → `Completed`
 
-Countries, Regions, and Cities do not have a status — depth is implied by content volume. (An earlier version gave countries a research status — `Wishlist` → `Researching` → `Sampling` → `Planning` — and it was removed: a country is a research container, and what is inside it already shows how far along it is.)
+Regions and Cities do not have formal status — depth is implied by content volume.
 
 ---
 
@@ -82,19 +83,18 @@ Countries, Regions, and Cities do not have a status — depth is implied by cont
 
   Free-form tags and expanded categories are a planned P2 enhancement.
 
-- **FR5a** — Global search across all content types, filterable by type, country, tag, and trip status (trips are the only content with a status).
+- **FR5a** — Global search across all content types, filterable by type, country, tag, and status.
 - **FR5b** — In-context search applies in two places: (1) the trip builder, scoped by default to countries referenced in the trip with an option to expand to the full library; (2) within country, region, or city records, scoped to all content nested under that record. Ctrl+F (Cmd+F on macOS) opens search in the most relevant context: in-context search in those two places, global search elsewhere.
-- **FR6** — A manual status on every Trip (`Sample → Planning → Ready → Completed`). Status is never auto-derived. Countries have no status.
-- **FR14** — Pinning and order. Countries and Trips can each be pinned. Pinned items come first, in an order the user sets by hand; everything else follows, newest first by default. The full Countries and Trips list pages also offer other sort orders (for example name or number of POIs); the side navigation shows only the pinned items and then the newest.
+- **FR6** — Manual status indicators at Country level (`Wishlist → Researching → Sampling → Planning`) and Trip level (`Sample → Planning → Ready → Completed`). Status is never auto-derived.
 
 ### Trip Planning
 
-- **FR7** — Itinerary builder supports two modes: high-level location blocks with rough durations, and day-by-day detailed view. Location blocks can be set at any geographic level — Country, Region, or City. A trip can mix blocks at different levels and transition fluidly from location-block mode to day-by-day as planning matures. A trip can exist in a mixed state with some blocks expanded into days and others not. Location-block mode is typical of a `Sample` trip and day-by-day detail of `Planning` and beyond, but the itinerary mode never sets or changes a trip's status — status is always manual (FR6). Besides location blocks, an itinerary can hold **travel blocks** — a flight, train, bus, ferry, or drive between places, with free-text from/to, a length of whole days (or 0), and notes. Travel blocks count toward the trip's length and its cost per day, take no POIs, and never create budget lines by themselves. A 0-day travel block placed first is **Day 0** — a departure the evening you leave after work — and is not counted in the trip's length.
-- **FR8** — Budget is a single flexible content type with no Rough vs. Detailed distinction. It starts as simple as a name and grows in detail over time. Structure: customizable categories containing line items, each with three columns — Budgeted/Estimate, Actual, Difference. There is no separate Status column: the Difference value itself carries the status, in four tiers — Under, Close, Over, and Way over — each with a glyph and a word as well as a color, at line item, category, and summary levels. Two global settings (not per budget) set the tiers: the **Close** threshold (default 10%) and the **Way over** threshold (default 25%, must be higher than Close). A summary snapshot (total budgeted, total actual, total difference, cost per day) is auto-calculated and surfaced in presentation mode. Cost per day is shown only when every block on the trip (location and travel) has a length. In this version a budget is **shared** — one pot for the whole trip — so cost per person is not shown; per-person and split budgets are FR16. A trip can have several budgets; one is marked as its primary budget, and that is the one presentation mode and the comparison view show. All amounts are in USD. Budget templates allow reuse of structure across trips: a template keeps category names and line item names but no amounts, and a budget made from a template is an independent copy.
+- **FR7** — Itinerary builder supports two modes: high-level location blocks with rough durations, and day-by-day detailed view. Location blocks can be set at any geographic level — Country, Region, or City. A trip can mix blocks at different levels and transition fluidly from location-block mode to day-by-day as planning matures. A trip can exist in a mixed state with some blocks expanded into days and others not. Location-block mode is typical of a `Sample` trip and day-by-day detail of `Planning` and beyond, but the itinerary mode never sets or changes a trip's status — status is always manual (FR6).
+- **FR8** — Budget is a single flexible content type with no Rough vs. Detailed distinction. It starts as simple as a name and grows in detail over time. Structure: customizable categories containing line items, each with three columns — Budgeted/Estimate, Actual, Difference. Visual indicators (Under, Over, Close) appear at line item, category, and summary levels. Close threshold is user-configurable, defaulting to 10%. A summary snapshot (total budgeted, total actual, total difference, cost per person, cost per day) is auto-calculated and surfaced in presentation mode. Cost per day is shown only when every location block on the trip has a duration. A trip can have several budgets; one is marked as its primary budget, and that is the one presentation mode and the comparison view show. All amounts are in USD. Budget templates allow reuse of category structure across trips without carrying over amounts.
 
 ### Presentation Mode
 
-- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (FR10, only when the window has two or more trips — a window with one trip is shown one trip at a time, with no comparison control). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab, plus C for comparison and 1–5 to jump between sections of the full trip detail). A window with no trips cannot be presented.
+- **FR9** — Any Travel Window can be flipped into presentation mode designed for a destination decision conversation. Supports two views: individual trip view (one trip at a time with next/previous navigation) and comparison view (FR10). Full trip detail is accessible from within presentation mode without exiting. Presentation mode is read-only by default. Surfaces trip concept, sample itinerary, budget snapshot, and photos. Designed to support an honest decision conversation — not a highlight reel. No app chrome or editing UI visible. Fully navigable via keyboard (arrow keys, Enter, Backspace, Escape, Tab).
 - **FR10** — The comparison view shows all shortlisted trips in a Travel Window side by side, with the same information in the same position for each: trip concept, location summary, budget snapshot, vibe tags, and a hero photo. It is designed for 2-3 trips and needs at least two.
 - **FR11** — Travel Window is a first-class concept. Contains a target travel date/window and 2-3 shortlisted trips referenced (not copied) from the master library. Trips are fully editable from within the Travel Window view — edits reflect immediately in the master library. A chosen trip can be flagged within the Travel Window; unchosen trips remain visible and intact. Travel Windows persist permanently as historical records and are never automatically deleted or hidden. `Completed` trips display in their current live state with a completion date badge — the completion date is user-set and defaults to today but can be changed to any date.
 - **FR12** — Presentation mode requires zero explanation to navigate. A non-user should be able to scroll through it intuitively without guidance.
@@ -105,16 +105,7 @@ Countries, Regions, and Cities do not have a status — depth is implied by cont
 
 ### Content Editing
 
-- **FR13** — All free-form notes fields across every content type support rich text editing: bold, italic, underline, bullet points, numbered lists, and hyperlinks. Rich text formatting is preserved on desktop and renders correctly in presentation mode. Pasting from external sources (OneNote, browser) preserves basic formatting where possible — if not, plain text is pasted without silent data corruption. Text highlight is not part of v1 (planned P2).
-
-### Planned After the MVP
-
-These are decided but not part of the P0 build. Each has its own story.
-
-- **FR15** *(P1)* — **Read everything.** From a country, a single reading view that stitches the country's notes together with the notes of its regions and cities, in order, so years of research can be re-read like a notebook. See US-063.
-- **FR16** *(P1)* — **Split budgets.** A budget can be split between travelers instead of shared: each traveler has a name and a share (%), and cost per person returns to the budget snapshot and the presentation. See US-064.
-- **FR17** *(P2)* — **Help and first-use tutorial.** A Help / FAQ view, and a short tutorial the first time the app is used that can be replayed from Help. The tutorial brings its own sample content, kept apart from the user's library. See US-065 and US-066.
-- **FR18** *(P2)* — **Customizable keyboard shortcuts**, in Settings › Keyboard. See US-067.
+- **FR13** — All free-form notes fields across every content type support rich text editing: bold, italic, underline, bullet points, numbered lists, and hyperlinks. Rich text formatting is preserved on desktop and renders correctly in presentation mode. Pasting from external sources (OneNote, browser) preserves basic formatting where possible — if not, plain text is pasted without silent data corruption.
 
 ---
 
@@ -133,7 +124,6 @@ These are decided but not part of the P0 build. Each has its own story.
 
 - Collaborative editing or sharing
 - OneNote API connector or automated import
-- Text highlight in rich text (planned P2 enhancement)
 - Free-form tagging (planned P2 enhancement)
 - Custom tag categories and values (planned P2 enhancement)
 - Social or community features
