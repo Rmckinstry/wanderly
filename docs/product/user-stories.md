@@ -29,13 +29,14 @@ _When I discover a new destination I'm curious about, I want to create a country
 
 Given I am anywhere in the app,
 When I create a new country and enter a name,
-Then a country record is created with status `Wishlist`, all other fields empty, and it appears in my master library immediately.
+Then a country record is created with only that name, all other fields empty, and it appears in the Countries list immediately.
 
 **Edge Cases:**
 
 - If I try to save with an empty name the app blocks creation and prompts for a name
 - Country names must be unique — if a country with the same name already exists the app blocks creation and surfaces the existing record
 - If I navigate away mid-creation without saving no record is created and no data is lost
+- A country has no status — nothing is set at creation and there is nothing to set later; what is inside a country shows how far along the research is
 - No tags are applied automatically
 
 ---
@@ -112,15 +113,17 @@ _When I want to rough out what a trip could look like, I want to create a Trip w
 
 **Acceptance Criteria:**
 
-Given I am in the master library or within a country record,
+Given I am in the Trips list or within a country record,
 When I create a new Trip with at minimum a name,
-Then the trip is created with status `Sample`, appears in the master library, and is available to be added to a Travel Window.
+Then the trip is created with status `Sample`, appears in the Trips list, and is available to be added to a Travel Window.
 
 **Edge Cases:**
 
 - A Trip can reference multiple countries — a multi-country itinerary is valid
 - If no country is linked at creation the trip is saved in an Unlinked state and can be linked later
 - Trip names do not need to be unique — two trips named "Northern Thailand" can exist at different planning stages
+- Starting a trip from a country record creates a trip named "<Country> trip" with only that country linked and no location block — the builder starts clean and I place the first block myself
+- Trips can be pinned: pinned trips come first in the Trips list, in an order I set by hand, followed by the rest newest first — the full Trips list also offers other sort orders
 - No tags are applied automatically
 
 ---
@@ -134,14 +137,14 @@ _When I want to capture useful knowledge about a destination or travel in genera
 
 Given I am anywhere in the app,
 When I create a Tip and specify its type (Tip or Lesson Learned) and scope (General or Destination-specific),
-Then it is saved and linked to the appropriate country, city, or trip if destination-specific, or stored in the General Tips library if general.
+Then it is saved and linked to the chosen country, region, or city if destination-specific, or stored in the General Tips library if general.
 
 **Edge Cases:**
 
 - A Lesson Learned can be General or Destination-specific
 - A General tip or Lesson Learned with no destination link is valid and lives in its own section
 - If I mark a tip as Destination-specific but don't select a destination the app prompts for one before saving
-- A Lesson Learned can only be linked to a trip with `Completed` status — linking to an active trip is not permitted
+- A tip's place is always General or a country, region, or city — a trip is never a tip's place. A Lesson Learned can optionally name the trip it came from, and only a trip with `Completed` status can be named — linking to an active trip is not permitted
 - No tags are applied automatically
 
 ---
@@ -276,6 +279,29 @@ Then the images are stored with the record and I can designate any image as the 
 
 ---
 
+**US-063 — Read Everything About a Country**
+_When I want to refresh my memory on a country before planning, I want to read its notes together with the notes of its regions and cities in one continuous view, so that I can re-read my research like a notebook instead of opening every page._
+
+**Priority:** P1
+
+**Acceptance Criteria:**
+
+Given I am viewing a country record,
+When I choose Read everything from the country's More menu,
+Then I see one scrolling view that stitches together the country's own notes with the notes of its regions and cities, each under a heading showing the place's name and where it sits.
+
+**Edge Cases:**
+
+- The view is read-only; each heading links to that place's record so I can edit there
+- (Assumption: order follows the hierarchy — the country's notes first, then each region followed by its cities, then cities that sit directly in the country)
+- (Assumption: only notes are stitched together — POIs, tips, and trips are not included)
+- Places with no notes are left out rather than shown as empty headings
+- Rich text formatting appears as written (US-007b)
+- A country with no notes anywhere shows an empty state that points back to the country's notes
+- Until this story is built the country page has no Read everything entry
+
+---
+
 ## 3. Trip Building
 
 ---
@@ -297,13 +323,17 @@ Then the block appears in the itinerary in sequence, the total trip duration is 
 - A block can be set at country, region, or city level — no level is required over another
 - Duration is optional on any block
 - A trip can mix blocks at different geographic levels (e.g. "Italy — 3 days" alongside "Chiang Mai — 4 days")
-- A block can be refined over time — a country block can be replaced by more specific region or city blocks as planning matures
+- A block can be refined over time — a country block can be replaced by more specific region or city blocks as planning matures; changing a block's place keeps its days when the new place is in the same country
 - Deleting a block does not delete the referenced country, region, or city from the master library
 - A country stays linked to the trip for as long as any of its blocks use it — it can be unlinked from the trip only after those blocks are removed or pointed elsewhere
 - A country used by any trip's location block cannot be deleted from the master library — the app lists the trips that use it so I can remove it from them first
 - If a region or city used by a block is deleted from the master library the app warns me first, and the block is kept and widened to its parent level (a Chiang Mai block becomes a Thailand block) with its duration and days intact
 - Multiple blocks can reference the same location (e.g. returning to Rome at the end of an Italy trip)
 - A trip can have a single location block (e.g. a Tuscany-only trip)
+- A trip can also hold travel blocks — a flight, train, bus, ferry, or drive — each with a free-text From and To, a length in whole days (0 is allowed), and notes; there are no half days
+- Travel blocks count toward the trip's total length and its cost per day, take no POIs, are never expanded into days, and never create budget lines on their own
+- A travel block does not need a country — it can be added to a trip that has no linked country yet
+- A 0-day travel block placed first is **Day 0** (for example, leaving on the evening after work): it sits at the start of the itinerary and is not counted in the trip's length. A 0-day travel block anywhere else shows the days it sits between (e.g. "Day 2→3")
 
 ---
 
@@ -327,7 +357,8 @@ Then the block expands into numbered days matching the assigned duration, the lo
 - A trip can exist in a mixed state — some blocks expanded into days, others still in location-block mode
 - A country or region block expanded into days can have its days later reorganized into sub-blocks if needed — by splitting the block in two at a chosen day, with each part keeping its days
 - Individual days can be added, removed, reordered, and moved between expanded blocks of the same trip — the block's duration always matches its number of days
-- An expanded block can be collapsed back to location-block mode — the app warns me first if any of its days have content
+- An expanded block can be collapsed back to location-block mode — the app warns me first if any of its days have content, then keeps them: the days with their notes and POIs are hidden, not deleted, and return when I expand the block again
+- Expand all and Collapse all expand or collapse every location block that has a duration in one step — blocks without a duration and travel blocks are skipped, and the trip shows how many blocks are expanded; which blocks are expanded is remembered per trip
 
 ---
 
@@ -415,23 +446,9 @@ Then I can set the date to any date in the past or future, and the date is saved
 
 ---
 
-**US-017 — Manually Update Country Status**
-_When my research on a country reaches a new depth, I want to manually update the country status, so that I can see at a glance where each destination sits in my research pipeline._
+**US-017 — Manually Update Country Status** _(Retired)_
 
-**Priority:** P0
-
-**Acceptance Criteria:**
-
-Given I am viewing a Country record,
-When I manually change the status,
-Then the status updates immediately and is reflected in the master library and any filtered views.
-
-**Edge Cases:**
-
-- Status can be set to any stage in any order — does not need to advance sequentially
-- A country status can be moved backwards (e.g. from `Sampling` back to `Researching`)
-- Country status is independent of any Trip status — completing a trip does not change the country status
-- No content is affected by a status change
+Countries no longer have a status — a country is a research container, and what is inside it already shows how far along it is. This story is retired and the ID is not reused. Trips keep their manual status (US-016).
 
 ---
 
@@ -484,7 +501,7 @@ Then each line item displays three columns — Budgeted/Estimate, Actual, Differ
 ---
 
 **US-020 — Track Actuals Against Estimates**
-_When I start making real bookings, I want to enter actual costs against my estimates, so that I can see exactly where I'm over, under, or close across every line item._
+_When I start making real bookings, I want to enter actual costs against my estimates, so that I can see exactly where I'm under, close, over, or way over across every line item._
 
 **Priority:** P0
 
@@ -492,15 +509,19 @@ _When I start making real bookings, I want to enter actual costs against my esti
 
 Given I am viewing a Budget with at least one line item,
 When I enter an actual cost for a line item,
-Then the Difference column auto-calculates (Actual minus Budgeted) and a visual indicator shows whether that line item is Under, Over, or Close — at the line item level, category subtotal level, and overall summary level.
+Then the Difference column auto-calculates (Actual minus Budgeted) and the Difference value itself shows the status — Under, Close, Over, or Way over — at the line item level, category subtotal level, and overall summary level.
 
 **Edge Cases:**
 
-- Under = actual is below budgeted estimate
-- Over = actual exceeds budgeted estimate — flagged visually (e.g. red)
-- Close = actual is within a defined threshold of the estimate — flagged visually (e.g. yellow). Threshold is user-configurable, defaulting to 10%
+- There is no separate Status column — the status lives in the Difference value, and every tier carries a glyph and a word as well as a color so meaning never depends on color alone: Under ↓ (green), Close ≈ (amber), Over ↑ (red), Way over ⇈ (a filled deep-red pill)
+- Under = the actual is below the estimate by more than the Close threshold
+- Close = the actual is within the Close threshold of the estimate, above or below it — an exact match is Close
+- Over = the actual exceeds the estimate by more than the Close threshold, up to the Way over threshold
+- Way over = the actual exceeds the estimate by more than the Way over threshold
+- Both thresholds are global settings (Settings › Budget), not set per budget: Close defaults to 10% and Way over to 25%. Way over must be higher than Close — an invalid pair is rejected with a message and the previous values stay in effect. Changing a threshold recolors every budget immediately
 - A line item with no actual entered shows Difference as pending — not zero
-- A line item with actual but no estimate still calculates and displays the actual with no variance shown
+- A line item with an actual but no estimate shows the actual with no variance
+- Hovering or focusing a Difference value gives the full sentence (e.g. "Over by $260, 36% above budget")
 - All amounts are in USD
 
 ---
@@ -514,15 +535,15 @@ _When I want a quick read on trip cost, I want to see a budget summary snapshot 
 
 Given I am viewing a Trip record that has a budget attached,
 When I view the record,
-Then the budget snapshot is visible showing total budgeted, total actual, total difference, cost per person, and cost per day — with overall Under/Over/Close indicator — without needing to open the full budget.
+Then the budget snapshot is visible showing total budgeted, total actual, total difference, and cost per day — with the overall Under/Close/Over/Way over indicator — without needing to open the full budget.
 
 **Edge Cases:**
 
-- If multiple budgets are attached the snapshot shows each separately with its name
-- Cost per person requires number of travelers to be set — if not set displays as incomplete
-- Cost per day requires every location block on the trip to have a duration — if any is missing it displays as incomplete
+- If multiple budgets are attached the snapshot on the trip shows the primary budget and how many there are (e.g. "Primary · 1 of 2"); every budget is reachable from the Budget screen, which lists each by name
+- Cost per person is not shown in this version — budgets are shared (one pot for the trip). It returns for split budgets (US-064)
+- Cost per day requires every block on the trip — location and travel — to have a length; if any is missing it displays as incomplete
 - An amount within the Close threshold of its budget shows as Close rather than Under or Over; an exact match is Close
-- While only some line items have actuals, the difference and indicator compare only those items and are labeled as partial
+- While only some line items have actuals, the difference and indicator compare only those items; lines still waiting for an actual show as Pending, and no "partial" label is added
 - Snapshot is visible in presentation mode
 - Snapshot reflects the most recently updated figures in real time
 
@@ -537,16 +558,38 @@ _When I've settled on a category structure that works for a type of trip, I want
 
 Given I am viewing any Budget,
 When I save it as a template with a name,
-Then the template captures all category names and structure but not individual amounts or line item values, and is available as a starting point when creating any future budget.
+Then the template captures all category names and line item names but no amounts, and is available as a starting point when creating any future budget.
 
 **Edge Cases:**
 
-- Applying a template populates category structure only — all cost columns start empty
+- Applying a template populates category names and line item names only — all cost columns start empty, and the new budget is an independent copy: changing it never changes the template
 - A template can be edited after saving — changes do not retroactively affect budgets already built from it
 - Multiple templates can exist (e.g. "Sample Trip Budget", "Full Trip Budget")
 - Deleting a template does not affect budgets already created from it
 - Template names must be unique — duplicates are blocked
-- If I apply a template to a budget that already has categories the app warns me before overwriting
+- If I apply a template to a budget that already has categories the app warns me before overwriting, and says that amounts already entered will be removed
+
+---
+
+**US-064 — Split a Budget Between Travelers**
+_When more than one person is paying for a trip, I want to split a budget between travelers by share, so that I can see what each person is responsible for._
+
+**Priority:** P1
+
+**Acceptance Criteria:**
+
+Given I am viewing a Budget,
+When I switch its payment mode from Shared to Split and add travelers, each with a name and a share (%),
+Then the budget shows each traveler's share of the total, and cost per person appears in the budget snapshot.
+
+**Edge Cases:**
+
+- Shared is the default for every budget — one pot, no travelers, no per-person figures; budgets that stay shared work exactly as in US-019 to US-021
+- Each traveler has a name and a share in %. (Assumption: shares must add up to 100% before the split can be saved)
+- In presentation mode the summary shows a short note of the split (e.g. "Split 70 / 30"); per-person amounts appear only in the full trip detail's budget, and never in the comparison view
+- Cost per person is shown only for a budget in Split mode
+- Switching a Split budget back to Shared hides the per-person figures. (Assumption: the travelers and shares are kept so switching to Split again restores them)
+- Replaces the earlier "number of travelers" approach, which was removed from this version (cost per person needs a split model to mean anything)
 
 ---
 
@@ -576,19 +619,20 @@ Then results are returned across all content types (Countries, Regions, Cities, 
 ---
 
 **US-024 — Filter Global Search Results**
-_When my search returns too many results, I want to filter by content type, country, tag, and status, so that I can narrow down to exactly what I'm looking for._
+_When my search returns too many results, I want to filter by content type, country, tag, and trip status, so that I can narrow down to exactly what I'm looking for._
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
 Given I have results showing in global search,
-When I apply one or more filters (content type, country, tag, status),
+When I apply one or more filters (content type, country, tag, trip status),
 Then results update immediately to show only matching records and active filters are clearly displayed.
 
 **Edge Cases:**
 
 - Multiple filters can be applied simultaneously
+- Trip status applies to trips only — countries and other content have no status to filter by
 - Filters are additive — Country: Italy AND Tag: Hiking returns only Italian hiking content
 - Clearing a single filter does not clear all filters
 - If a filter combination returns no results an empty state is shown with a suggestion to broaden filters
@@ -597,14 +641,14 @@ Then results update immediately to show only matching records and active filters
 
 ---
 
-**US-025 — Browse Library by Country**
+**US-025 — Browse a Country's Contents**
 _When I want to explore what I have on a specific destination, I want to browse the full content hierarchy under a country, so that I can see all my research in one organized view._
 
 **Priority:** P0
 
 **Acceptance Criteria:**
 
-Given I am viewing the master library,
+Given I am viewing the Countries list,
 When I select a country,
 Then I see all content nested under that country — regions, cities, POIs, trips, tips, and budgets — organized by the content hierarchy with content counts visible at each level.
 
@@ -614,6 +658,8 @@ Then I see all content nested under that country — regions, cities, POIs, trip
 - Content counts are visible at each hierarchy level (e.g. "Northern Thailand — 3 Cities, 12 POIs")
 - Collapsing and expanding hierarchy levels is supported for navigability
 - Trips that reference multiple countries appear under each referenced country
+- Countries can be pinned: pinned countries come first in the Countries list, in an order I set by hand (drag, or the keyboard), followed by the rest newest first
+- The side navigation lists pinned countries first, then the newest; other sort orders (name, most POIs) are offered only on the full Countries page
 - Filtering within a country view is supported — e.g. show only POIs tagged `Hiking` within Thailand
 
 ---
@@ -642,24 +688,24 @@ Then results are scoped to the current context — trip-relevant content when in
 
 ---
 
-**US-027 — Filter Master Library by Status**
-_When I want to see all destinations at a specific research stage, I want to filter my library by country or trip status, so that I can quickly see what needs attention or what's ready._
+**US-027 — Filter Trips by Status**
+_When I want to see all trips at a specific stage, I want to filter the Trips list by status, so that I can quickly see what needs attention or what's ready._
 
 **Priority:** P1
 
 **Acceptance Criteria:**
 
-Given I am viewing the master library,
+Given I am viewing the Trips list,
 When I filter by status,
-Then only records matching the selected status are shown.
+Then only trips with the selected status are shown.
 
 **Edge Cases:**
 
-- Country and trip statuses are filtered independently
-- Multiple statuses can be selected simultaneously
-- Clearing the status filter restores the full library view
-- If no records match the selected status an empty state is shown
-- Status filter can be combined with other filters like country or tag
+- One status is chosen at a time: All, Sample, Planning, Ready, or Completed
+- Countries have no status, so there is no status filter on the Countries list
+- Choosing All clears the status filter and restores the full list
+- If no trips match the selected status an empty state is shown that names the filter and offers to clear it
+- The status filter combines with the other Trips filters, country and tag (several countries or tags can be selected; different filters combine with AND)
 
 ---
 
@@ -670,7 +716,7 @@ _When I want to find all content matching a specific attribute, I want to filter
 
 **Acceptance Criteria:**
 
-Given I am viewing the master library or a country view,
+Given I am viewing the Countries list, the Trips list, or a country view,
 When I apply one or more tag filters,
 Then only content records carrying those tags are shown with each result displaying its content type and parent context.
 
@@ -694,7 +740,7 @@ _When I want to search quickly without reaching for the mouse, I want Ctrl+F to 
 
 Given I am anywhere in the app,
 When I press Ctrl+F (Cmd+F on macOS),
-Then search is triggered in the most relevant context — in-context search if I am within a trip builder or country record, global search if I am in the master library or a neutral screen.
+Then search is triggered in the most relevant context — in-context search if I am within a trip builder or country record, global search if I am in a list page or a neutral screen.
 
 **Edge Cases:**
 
@@ -715,13 +761,13 @@ _When my wife and I decide on a travel period, I want to create a Travel Window 
 
 **Acceptance Criteria:**
 
-Given I am in the master library or Travel Windows section,
+Given I am in the Travel Windows section,
 When I create a Travel Window with at minimum a name and target travel period,
 Then the Travel Window is created, appears in the Travel Windows section, and is immediately available to add shortlisted trips to.
 
 **Edge Cases:**
 
-- A Travel Window requires at minimum a name — target date is strongly recommended but not blocked if missing
+- A Travel Window requires at minimum a name — target date is strongly recommended but not blocked if missing; a window with no target date is listed after the dated ones in Upcoming and marked "No date yet"
 - The target date can carry an optional label shown in its place (e.g. "November 2027") — Travel Windows are always ordered by the date itself, never by the label
 - Multiple Travel Windows can exist simultaneously
 - Travel Window names must be unique — duplicates are blocked
@@ -808,7 +854,7 @@ Then all shortlisted trips are displayed side by side showing trip concept, loca
 - Comparison view is read-only — no editing controls visible
 - If a shortlisted trip has no budget attached its budget column shows as not yet estimated
 - If a shortlisted trip has no photos a placeholder is shown
-- If only one trip is shortlisted comparison view is accessible but notes that only one option is present
+- Comparison needs two or more shortlisted trips — with one trip there is no comparison control and the Travel Window shows that trip on its own
 
 ---
 
@@ -916,7 +962,7 @@ Then the view switches to a full clean display showing all shortlisted trips wit
 
 **Edge Cases:**
 
-- Presentation mode is accessible from any Travel Window regardless of how many trips are shortlisted
+- Presentation mode is available from any Travel Window that has at least one shortlisted trip; with none, the Present control is disabled and says "Add a trip first"
 - Entering presentation mode does not alter any data or statuses
 - Presentation mode is dismissable at any time returning me to exactly where I was in the Travel Window
 - If only one trip is shortlisted presentation mode shows that single trip with no comparison navigation
@@ -974,12 +1020,12 @@ _When discussing destination options, I want the budget snapshot visible in pres
 
 Given I am in presentation mode viewing a trip or comparison,
 When the budget snapshot is displayed,
-Then it shows total estimated cost, cost per person, and cost per day clearly and legibly, with the Under/Over/Close indicator visible if actuals have been entered.
+Then it shows total estimated cost and cost per day clearly and legibly, with the Under/Close/Over/Way over indicator visible if actuals have been entered.
 
 **Edge Cases:**
 
 - If no budget is attached the snapshot area shows "Budget not yet estimated"
-- Cost per person and cost per day only display if number of travelers is set and every location block has a duration
+- Cost per day only displays if every block on the trip, location and travel, has a length; cost per person is not shown in this version (budgets are shared) and returns with split budgets (US-064)
 - Budget snapshot in comparison view is consistently positioned across all trips
 - Full budget detail is not shown in presentation mode — snapshot only
 - If multiple budgets are attached the trip's primary budget snapshot is shown with an indicator that more detail is available
@@ -1022,6 +1068,9 @@ Then the following behaviors are supported:
 - **Enter** — opens full trip detail from the summary view
 - **Backspace** — returns from full trip detail back to the presentation summary
 - **Tab** — cycles through interactive elements within the current view
+- **C** — opens the comparison view (only when two or more trips are shortlisted)
+- **1–5** — in full trip detail, jumps to a section: Itinerary, Places, Tips, Budget, Photos
+- **?** — opens the keyboard shortcut sheet
 
 **Edge Cases:**
 
@@ -1029,6 +1078,8 @@ Then the following behaviors are supported:
 - Keyboard shortcuts are consistent and do not conflict with OS defaults where possible
 - A visible keyboard shortcut reference is accessible from within presentation mode without disrupting the presentation
 - Exiting presentation mode does not trigger any status changes or data updates
+- On the last trip, "Compare all" becomes the main action in place of "Next", so the walk-through ends at the comparison
+- Single-letter shortcuts exist only inside presentation mode — elsewhere in the app they would fire while typing notes (starting presentation from a Travel Window is Cmd+Enter / Ctrl+Enter)
 - If presentation mode is accidentally exited re-entering returns to the beginning of the presentation
 
 ---
@@ -1094,7 +1145,8 @@ Then the tip is saved and appears within the linked destination's record as well
 - A destination-specific tip requires a destination link — if scope is set to Destination-specific the app prompts for a destination before saving
 - A tip can be linked to any level of the hierarchy — country, region, or city
 - If created from within a destination record the destination link is pre-populated automatically
-- If the linked destination is deleted the tip is not deleted — it moves to an Unlinked state and is flagged for reassignment
+- If the linked destination is deleted the tip is not deleted — it moves to an Unlinked state and is flagged for reassignment. The Tips list shows no banner for it: unlinked tips appear when I filter by Place › Unlinked, and an "Unlinked N" count in the side navigation is the one standing reminder
+- A tip's place is a country, region, or city — never a trip
 - Rich text formatting is supported per US-007b
 - No tags are applied automatically
 
@@ -1134,7 +1186,7 @@ _When I'm researching or planning for a destination, I want to see all relevant 
 
 Given I am viewing a country, region, or city record,
 When I navigate to the Tips section of that record,
-Then all destination-specific tips and lessons learned linked to that record are displayed, clearly separated by type, with the most recently added surfaced first by default.
+Then all destination-specific tips and lessons learned linked to that record are displayed in one list, told apart by a TIP / LESSON label (never by color alone), with the most recently added surfaced first by default.
 
 **Edge Cases:**
 
@@ -1142,6 +1194,7 @@ Then all destination-specific tips and lessons learned linked to that record are
 - If no tips exist for a destination an empty state is shown with a prompt to add the first tip
 - Tips and Lessons Learned are visually distinct from each other in the list
 - Sorting and filtering within the tips section is supported — by type, date added, and destination level
+- In the app's Tips section one list holds every tip and lesson; I can filter it by type, place, source trip, tag, and whether a tip has follow-ups
 - General Tips do not appear in destination-specific tip views
 
 ---
@@ -1159,7 +1212,7 @@ Then only tips with General scope are shown, organized by date added with the mo
 
 **Edge Cases:**
 
-- General Tips are clearly separated from destination-specific tips
+- General Tips are clearly separated from destination-specific tips — in the Tips list they are found with the Place filter › General (no place)
 - Sorting and filtering within General Tips is supported — by date added and keyword search
 - If no General Tips exist an empty state is shown with a prompt to add the first one
 - General Tips are also surfaced in global search results
@@ -1367,7 +1420,71 @@ Then the new category appears in the tag selector for the assigned content types
 
 ---
 
-## 10. Mobile & Offline — Deferred
+## 10. Help, Onboarding & Customization
+
+---
+
+**US-065 — Open a Help and FAQ View**
+_When I forget how something works, I want a Help view with short answers to common questions, so that I can get unstuck without leaving the app._
+
+**Priority:** P2
+
+**Acceptance Criteria:**
+
+Given I am anywhere in the app,
+When I open Help,
+Then I see a Help view with short answers to common questions, including how to start a trip, build an itinerary, keep a budget, and present to a Travel Window, plus the keyboard shortcuts.
+
+**Edge Cases:**
+
+- Help works with no internet connection — it is part of the app
+- (Assumption: Help is read-only text with no search of its own; global search does not search Help)
+- Help includes a way to replay the tutorial (US-066)
+
+---
+
+**US-066 — Take a First-Use Tutorial**
+_When I open the app for the first time, I want a short guided tour of the core flow, so that I learn how a trip comes together without reading documentation._
+
+**Priority:** P2
+
+**Acceptance Criteria:**
+
+Given I have just started a new, empty library,
+When the app opens for the first time,
+Then I am offered a short tutorial that walks through creating a country, starting a trip, and presenting it, using sample content that belongs to the tutorial.
+
+**Edge Cases:**
+
+- The tutorial can be skipped at any point and is offered only once
+- It can be replayed at any time from Help (US-065)
+- The tutorial brings its own sample trip and places: they exist only inside the tutorial and are never added to my library, so a new library still starts empty and nothing needs deleting afterwards
+- (Assumption: restoring from a backup skips the first-use offer, since the person is not new; the tutorial is still available from Help)
+
+---
+
+**US-067 — Customize Keyboard Shortcuts**
+_When a default shortcut clashes with my habits or another app, I want to change it, so that the app fits how I work._
+
+**Priority:** P2
+
+**Acceptance Criteria:**
+
+Given I am in Settings › Keyboard,
+When I assign a different key combination to an action,
+Then the new shortcut works wherever the action is available, and shortcut hints on buttons and in the shortcut sheets show it.
+
+**Edge Cases:**
+
+- Assigning a combination that is already in use shows what it clashes with and lets me swap or cancel — two actions never share a shortcut silently
+- I can reset one action, or all of them, to the defaults
+- (Assumption: basic navigation keys — Escape, Enter, Tab, and the arrow keys — are fixed and cannot be reassigned)
+- Single-letter shortcuts can only be assigned to actions inside presentation mode, because elsewhere they would fire while typing notes
+- Changes save as I make them and are stored on this computer
+
+---
+
+## 11. Mobile & Offline — Deferred
 
 > **All stories in this section are deferred.** This version of the app is a local desktop application. Mobile layout, offline storage, and multi-device sync are not in scope. Stories are documented here for future reference when expanding to a hosted, multi-device version.
 >
@@ -1407,21 +1524,22 @@ Unobtrusive status indicator showing Online / Offline / Syncing / Sync Failed. S
 
 ## Story Count Summary
 
-| Section                      | Stories | P0     | P1     | P2    | Deferred |
-| ---------------------------- | ------- | ------ | ------ | ----- | -------- |
-| Content Creation             | 6       | 5      | 1      | 0     | 0        |
-| Content Enrichment & Editing | 6       | 4      | 2      | 0     | 0        |
-| Trip Building                | 7       | 7      | 0      | 0     | 0        |
-| Budget                       | 5       | 5      | 0      | 0     | 0        |
-| Search & Discovery           | 7       | 4      | 3      | 0     | 0        |
-| Travel Windows               | 9       | 8      | 1      | 0     | 0        |
-| Presentation Mode            | 7       | 6      | 1      | 0     | 0        |
-| Tips & Lessons Learned       | 6       | 0      | 6      | 0     | 0        |
-| Tagging & Organization       | 8       | 0      | 6      | 2     | 0        |
-| Mobile & Offline             | 6       | 0      | 0      | 0     | 6        |
-| **Total**                    | **67**  | **39** | **20** | **2** | **6**    |
+| Section                                | Stories | P0     | P1     | P2    | Deferred |
+| -------------------------------------- | ------- | ------ | ------ | ----- | -------- |
+| Content Creation                       | 6       | 5      | 1      | 0     | 0        |
+| Content Enrichment & Editing           | 7       | 4      | 3      | 0     | 0        |
+| Trip Building                          | 6       | 6      | 0      | 0     | 0        |
+| Budget                                 | 6       | 5      | 1      | 0     | 0        |
+| Search & Discovery                     | 7       | 4      | 3      | 0     | 0        |
+| Travel Windows                         | 9       | 8      | 1      | 0     | 0        |
+| Presentation Mode                      | 7       | 6      | 1      | 0     | 0        |
+| Tips & Lessons Learned                 | 6       | 0      | 6      | 0     | 0        |
+| Tagging & Organization                 | 8       | 0      | 6      | 2     | 0        |
+| Help, Onboarding & Customization       | 3       | 0      | 0      | 3     | 0        |
+| Mobile & Offline                       | 6       | 0      | 0      | 0     | 6        |
+| **Total**                              | **71**  | **38** | **22** | **5** | **6**    |
 
 Counts include lettered stories (US-007b, US-016b, US-032b, US-034b, US-056b, US-056c) and
-exclude the retired US-059. Story IDs are stable identifiers, not an ordering: sections
-are grouped by theme, so the deferred mobile stories (US-044 to US-049) appear after
-US-062.
+exclude the retired US-017 and US-059. Story IDs are stable identifiers, not an ordering: sections
+are grouped by theme, so the newest stories (US-063 to US-067) sit within their themes, and the
+deferred mobile stories (US-044 to US-049) appear after US-067.

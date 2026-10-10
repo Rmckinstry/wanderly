@@ -1,7 +1,7 @@
 ---
 title: Design handoff to /pm and /architect
-status: open — needs owner responses
-last-updated: 2026-10-09
+status: /pm items done (2026-10-10) — /architect items still open
+last-updated: 2026-10-10
 ---
 
 # Design handoff to `/pm` and `/architect`
@@ -33,6 +33,39 @@ Everything the design phase decided that changes the product or architecture doc
 | 27 | At the last trip in presentation, "Compare all" becomes the primary action | — | US-042 (navigation) — informational |
 | 28 | A Travel Window with no target date sorts last in Upcoming ("No date yet") | — | US-030 |
 
+### `/pm` response — 2026-10-10
+
+All `/pm` items above are applied in `docs/product/` (`requirements.md`, `user-stories.md`). Where each landed:
+
+| # | Outcome |
+| --- | --- |
+| 1 | Country status removed: FR6 is trip-only; US-001 no longer sets `Wishlist`; US-017 retired (ID not reused); US-024 filters by trip status; US-027 is now trips only |
+| 2 | "Library" → Countries, with Trips as a sibling section: Content Model note, US-001, US-005, US-025, US-027, US-028, US-030. "The library" still means everything stored |
+| 3 | US-033: comparison needs 2+ trips; FR9 says the same |
+| 4 | New FR14; criteria added to US-005 (Trips list) and US-025 (Countries list). They sit inside P0 stories, so pinning is now P0 — say so if you would rather split it out as P1 |
+| 5 | FR8 and US-020 rewritten: no Status column, four tiers, two global thresholds (Close 10%, Way over 25%, Way over > Close) |
+| 6 | US-021: no "partial" label |
+| 7 | US-042: C, 1–5 and ? added; single-letter keys only inside presentation |
+| 8 | Not in v1. Recorded as planned P2 (FR13, Out of Scope) |
+| 16 | New US-063 **P1** (FR15), answers question A |
+| 17 | FR7, US-012 (travel blocks, Day 0), US-013 (Expand all / Collapse all) |
+| 18 | D-28 applied to FR8, US-021, US-040 (cost per person removed from v1). New US-064 **P1** (FR16) brings it back through split budgets — answers question H |
+| 19 | US-005: Start a trip from a country links only that country; no block |
+| 20 | New US-065 Help/FAQ and US-066 tutorial, both **P2** (FR17). Tutorial is replayable from Help and uses its own sample content, never the library — answers question G |
+| 22 | New US-067 **P2** (FR18) |
+| 23 | US-022: templates keep category and line names; a budget made from one is an independent copy |
+| 24 | US-006, US-051, US-053, US-054: one list with TIP / LESSON labels; a tip's place is General or a country/region/city, never a trip; Unlinked behaviour (D-37) |
+| 25 | **Single-select** — US-027 changed to match the design (question B) |
+| 26 | Present is disabled with 0 trips ("Add a trip first") — US-037 changed; confirmed by presentation.md |
+| 27 | US-042 edge case added |
+| 28 | US-030: a window with no date sorts last in Upcoming, "No date yet" |
+
+Also settled from the design docs (no owner input needed): **question C** — collapsing an expanded block keeps its days, hidden, and expanding again restores them (trips-and-trip-builder.md); US-013 now says so, and the architect's item 30 can proceed on that basis. Item 29 ("Change place…" keeps days within the same country) is also written into US-012.
+
+Changes beyond the handoff, made to match the design — check them:
+- **US-021, multiple budgets:** the story said the snapshot shows each budget; the design shows the primary ("Primary · 1 of 2") on the trip and every budget in the Budget screen switcher. The story now follows the design.
+- **US-025:** the story lists budgets among a country's contents, but the country detail screen shows no budgets (they live on trips). Not changed — decide whether the story or the screen should move.
+
 ## For `/architect` — architecture docs
 
 | # | Change | Decision | Where |
@@ -58,18 +91,18 @@ Everything the design phase decided that changes the product or architecture doc
 
 ## Open design questions
 
-| # | Question | Blocks | Needed before |
-| --- | --- | --- | --- |
-| A | Is the "Read everything" view (item 16) P0, P1 or P2? | Country detail (a "Read everything" entry point in More ▾) | Country detail build — the screen ships without it if P1/P2 |
-| B | Should the Trips list status filter allow several statuses at once (US-027, P1)? The design uses a single-select segmented control. | Trips list | Trips list build (P1 filter) |
-| C | When an expanded block is collapsed, are its days and their content kept (design) or removed (one reading of US-013)? | Trip builder — collapse confirm copy and data | **Trip builder build** |
-| D | Should the presentation hero photo sit on a `mat` frame (as the token describes) or bleed to its own edges (as the hi-fi shows)? | Presentation summary | Presentation polish (not blocking) |
-| E | Follow-up lesson block on Tip detail: bordered `surface` box (spec) instead of the wireframe's left rule — OK? | Tip detail (P1) | Tips build |
-| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** |
-| G | Help / tutorial priority and scope (item 20) | none in P0 | P1 planning |
-| H | Per-person / split budgets (item 18) — when scheduled, presentation's ledger gains a "Split 70 / 30" note and per-person amounts in full detail only | Presentation, Budget | When `/pm` schedules item 18 |
+| # | Question | Blocks | Needed before | Status |
+| --- | --- | --- | --- | --- |
+| A | Is the "Read everything" view (item 16) P0, P1 or P2? | Country detail (a "Read everything" entry point in More ▾) | Country detail build | **Answered: P1** — country detail ships without the entry point until US-063 |
+| B | Should the Trips list status filter allow several statuses at once (US-027, P1)? | Trips list | Trips list build (P1 filter) | **Answered: single-select** — design stands |
+| C | When an expanded block is collapsed, are its days and their content kept (design) or removed (one reading of US-013)? | Trip builder — collapse confirm copy and data | **Trip builder build** | **Answered: kept, hidden** — from the design spec; US-013 now says so |
+| D | Should the presentation hero photo sit on a `mat` frame (as the token describes) or bleed to its own edges (as the hi-fi shows)? | Presentation summary | Presentation polish (not blocking) | Open — design |
+| E | Follow-up lesson block on Tip detail: bordered `surface` box (spec) instead of the wireframe's left rule — OK? | Tip detail (P1) | Tips build | Open — design |
+| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** | Open — `/architect` and owner |
+| G | Help / tutorial priority and scope (item 20) | none in P0 | P1 planning | **Answered: both P2**; tutorial replayable, own sample content |
+| H | Per-person / split budgets (item 18) | Presentation, Budget | When `/pm` schedules item 18 | **Answered: P1** (US-064). Presentation's ledger gains a "Split 70 / 30" note; per-person amounts in full detail only |
 
-**Screens that cannot be finished until a question is answered:** Trip builder's collapse behaviour (C) and the first-run restore progress step (F). Everything else can be built now with the assumptions stated in its spec.
+**Screens that cannot be finished until a question is answered:** only the first-run restore progress step (F). Everything else can be built now with the assumptions stated in its spec.
 
 ## P0 coverage
 
