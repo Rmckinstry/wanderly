@@ -9,10 +9,10 @@ Audit designs, or the user's implemented UI, and report findings by severity. Au
 
 ## Step 0 — Pick mode and lens
 
-| Mode | Input | Runs when |
-|---|---|---|
-| **Mockup** | Design artifacts and the design system | After hi-fi mockups, before the handoff package is finalized |
-| **Implemented** | The user's code or screenshots | Whenever the user shares built screens; to catch drift |
+| Mode            | Input                                  | Runs when                                                    |
+| --------------- | -------------------------------------- | ------------------------------------------------------------ |
+| **Mockup**      | Design artifacts and the design system | After hi-fi mockups, before the handoff package is finalized |
+| **Implemented** | The user's code or screenshots         | Whenever the user shares built screens; to catch drift       |
 
 **Lens.** If the user has chosen a specific critique skill (for example one for removing generic AI-generated design), run it as the lens for Step 2 and merge its findings into this report format. If the user has not chosen one, use the built-in checklist in Step 2. Do not install or recommend a skill unprompted.
 
@@ -35,6 +35,15 @@ Audit designs, or the user's implemented UI, and report findings by severity. Au
 - [ ] Weak hierarchy: no clear first, second, and third thing to look at
 - [ ] Generic or placeholder-sounding microcopy
 - [ ] A layout that could belong to any product
+- [ ] Excessive script fonts
+- [ ] Excessive eyebrow text
+- [ ] Lack of margin and padding enforcement
+
+## Step 2a - Design hints
+
+- Don't use the same border radius corner for a shape inside another one. Use the 1:2 rule.
+- Use action verbs that relate to the label in the same context. Labelling your answer "Yes" and "No" might be confusing. Instead words like "Discard" and "Save"
+- Make selected items pop in a list visually.
 
 ## Step 3 — Traceability
 
