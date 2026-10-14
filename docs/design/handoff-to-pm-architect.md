@@ -1,7 +1,7 @@
 ---
 title: Design handoff to /pm and /architect
-status: /pm items done (2026-10-10) — /architect items still open
-last-updated: 2026-10-10
+status: /pm and /architect items done (2026-10-13) — questions D, E, F and two new design items open
+last-updated: 2026-10-13
 ---
 
 # Design handoff to `/pm` and `/architect`
@@ -83,6 +83,37 @@ Changes beyond the handoff, made to match the design — check them:
 | 30 | Collapsing an expanded block keeps its days and content (hidden), per the design — confirm storage keeps days when `mode` returns to location-block | US-013 | data-model.md — see open question C |
 | 31 | Restore copy progress (determinate) for first-run restore from a folder | NFR6 | api-contracts.md (backup:restore progress events) |
 
+### `/architect` response — 2026-10-13
+
+All `/architect` items above are applied in `docs/architecture/` (`architecture.md`, `data-model.md`, `api-contracts.md`). Where each landed:
+
+| # | Outcome |
+| --- | --- |
+| 9 | `countries.status` and its index dropped; country status removed from every endpoint and from search filters. `budgets.close_threshold` dropped — Close and Way over are global settings in `settings.json`. `pin_position` (one nullable column = flag + order) on `countries` and `trips`, with `content:country:pin` / `trip:trip:pin`. Variance status is now `Under / Close / Over / WayOver` |
+| 10 | `presentation:comparison:get` returns `notes` (the trip concept) |
+| 11 | Route inventory rewritten: `/` is Countries, `/settings/*` (appearance, budget, templates new/edit, backup), `/welcome`, `/recovery`, `/tips/:id`, `/trips/:id/budgets/:budgetId`, and `/countries/:id/read` (P1) |
+| 12 | Hero rule in Presentation Key behaviours, used by presentation, comparison, Travel Window detail and the Trips list: trip hero → trip's first photo → each location block's place (city, region, country) → POIs on the trip's days → linked countries without a block → placeholder |
+| 13 | Typefaces row in the Tech Stack (`@fontsource-variable/*` 5.x, OFL-1.1, bundled); CSP is now `font-src 'self'` |
+| 14 | New **UI State Store** pattern and **Settings** module (Module 10: `settings:all:get` / `settings:all:update`) owning `settings.json`: `preferences`, `ui`, `backup` |
+| 17 | `trip_blocks.kind` (location / travel), nullable `country_id`, `travel_mode`, `from_label`, `to_label`, `duration_days` ≥ 1 for location and ≥ 0 for travel, enforced by CHECKs. Trip length and day numbering (incl. Day 0) are derived; rules in Trip module Key behaviours |
+| 18 | `num_travelers` and cost per person removed from v1. Split budgets (P1, US-064) are specified as a planned migration: `budgets.payment_mode` + `budget_travelers` (shares in basis points) |
+| 21 | Damaged file moved aside as `wanderly-damaged-<date>.db`; launch state (normal / first run / recovery) via `backup:launch:get`; folder pick looks one level down for `Wanderly Backup`; the first-run folder becomes the backup folder and its saved preferences are applied; restore points carry counts and size from a sidecar written with each copy |
+| 29 | Changing a block's place keeps its days, duration and notes |
+| 30 | **Collapse is UI state, not data.** Whether a block has days is stored; whether it is shown open is remembered per trip in `settings.json`. There is no collapse channel any more, so days can't be lost by collapsing, and presentation shows every day that exists. `days_expanded` renamed `has_days`. "Expand all" has its own channel (`trip:block:expand-all`) because it creates days |
+| 31 | `backup:restore:progress` event (bytes and files, done and total); media copies first and the database swap is the last step, so a failure part-way leaves the library untouched. A new "Events (main → renderer)" convention was added to the API conventions |
+| 15 | P2 category colours specified as a planned `budget_categories.color` swatch key |
+
+Added while reconciling the API with the screen specs (not in the handoff list):
+- Presentation summary now returns **highlights by stop** (top 2 POIs from the trip's days, Must Do first, "+N more") and the primary budget's **category split** for "Where the money goes" (D-14), plus up to 3 thumbnails
+- Trips list returns length, estimate, window count and a hero thumbnail; Countries list returns tags and a hero thumbnail (D-24, D-34)
+- Travel Window detail returns each trip's route blocks, length and hero image for the side-by-side columns
+- `budget:budget:duplicate` (Duplicate in the budget and template menus), and line items can move between categories
+- `backup:folder:pick` and `backup:first-run:start-fresh` for the first-run screens
+
+**New items for `/uiux`** — both recorded as open item F in `architecture.md`:
+- **I — Failed migration screen.** recovery-and-first-run.md offers "Open library" after an update fails, but this version of the app cannot open a library still on the previous schema. The screen can only show the error and quit. It needs a different action.
+- **J — "Change place…" across countries.** The design keeps a block's days when the new place is in the same country. The API also accepts a place in another country and keeps the days. If the picker should offer only the block's own country, that is a design rule, not an API limit.
+
 ## Later (P2)
 
 | # | Item |
@@ -98,11 +129,13 @@ Changes beyond the handoff, made to match the design — check them:
 | C | When an expanded block is collapsed, are its days and their content kept (design) or removed (one reading of US-013)? | Trip builder — collapse confirm copy and data | **Trip builder build** | **Answered: kept, hidden** — from the design spec; US-013 now says so |
 | D | Should the presentation hero photo sit on a `mat` frame (as the token describes) or bleed to its own edges (as the hi-fi shows)? | Presentation summary | Presentation polish (not blocking) | Open — design |
 | E | Follow-up lesson block on Tip detail: bordered `surface` box (spec) instead of the wireframe's left rule — OK? | Tip detail (P1) | Tips build | Open — design |
-| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** | Open — `/architect` and owner |
+| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** | Open — design. `/architect`: nothing is replaced until the final database swap, so a Cancel during the copy is safe to add. v1 ships without one unless design adds it |
 | G | Help / tutorial priority and scope (item 20) | none in P0 | P1 planning | **Answered: both P2**; tutorial replayable, own sample content |
 | H | Per-person / split budgets (item 18) | Presentation, Budget | When `/pm` schedules item 18 | **Answered: P1** (US-064). Presentation's ledger gains a "Split 70 / 30" note; per-person amounts in full detail only |
+| I | Failed-migration recovery state offers "Open library", which the app cannot do (see `/architect` response) | Recovery screen | **Recovery screen build** | Open — design |
+| J | Should "Change place…" offer only places in the block's own country? (API accepts any and keeps the days) | Trip builder (not blocking) | Trip builder polish | Open — design |
 
-**Screens that cannot be finished until a question is answered:** only the first-run restore progress step (F). Everything else can be built now with the assumptions stated in its spec.
+**Screens that cannot be finished until a question is answered:** the first-run restore progress step (F, only if a Cancel is wanted) and the recovery screen's failed-migration state (I). Everything else can be built now with the assumptions stated in its spec.
 
 ## P0 coverage
 

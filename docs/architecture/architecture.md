@@ -45,6 +45,10 @@
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │  Backup — local snapshots · backup folder · restore     │   │
 │  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Settings — settings.json: preferences · UI state       │   │
+│  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,6 +70,7 @@
 | Styling                | Tailwind CSS            | 4.x     | Utility-first; no context switching between CSS files and components; right scale for solo development                                                            | CSS Modules — more verbose for this project size                                                                                                      |
 | Drag and drop          | @dnd-kit/core           | 6.x     | Accessible, headless, React-native; handles itinerary block and POI reordering                                                                                    | react-beautiful-dnd — effectively deprecated                                                                                                          |
 | Image processing       | Sharp                   | 0.35.x  | Runs in Electron main process; handles copy-on-import, thumbnail generation, and file type detection; Node-API prebuilt binaries                                  | Canvas API — cannot write to file system from renderer                                                                                                |
+| Typefaces              | Hanken Grotesk, JetBrains Mono, Newsreader (`@fontsource-variable/*`) | 5.x | The design system's three families (D-12), bundled with the app as variable WOFF2 files so they load under `font-src 'self'` with no network; one package per family, OFL-1.1 licensed | Google Fonts at runtime — the app makes no network requests (`connect-src 'none'`) and must work offline; system font stacks — would not match the approved design |
 | Packaging              | electron-builder        | 26.x    | Handles macOS and Windows packaging with code signing hooks; rebuilds or unpacks native modules as part of packaging                                              | electron-forge — viable but electron-builder has broader format support                                                                               |
 
 **Version source of truth:** All downstream documents reference versions from this table.
@@ -91,6 +96,11 @@ note below says otherwise.
   by the editor's major version.
 - **@dnd-kit/core** is the stable package. Its successor (`@dnd-kit/react`) is still
   pre-1.0 and is not used.
+- **Typefaces** are `@fontsource-variable/hanken-grotesk`, `@fontsource-variable/jetbrains-mono`
+  and `@fontsource-variable/newsreader` (5.3.0 at validation, 2026-10-13). Vite copies the
+  WOFF2 files into the build, so they are served from the app itself. Newsreader is used
+  only for presentation trip titles; import only the weights and styles the design uses
+  (400 for Newsreader) to keep the bundle small.
 
 ---
 
@@ -113,15 +123,16 @@ note below says otherwise.
 
 | Module             | Responsibility                                                                                                                                                                                                                                                                                              |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Content**        | CRUD for the geographic hierarchy: Country, Region, City, POI, and their tag assignments. Owns hierarchy consistency, country status management, and the warn-or-refuse checks before destination deletes. Largest module.                                                                                  |
+| **Content**        | CRUD for the geographic hierarchy: Country, Region, City, POI, and their tag assignments. Owns hierarchy consistency, pinning of countries, and the warn-or-refuse checks before destination deletes. Countries have no status (D-09). Largest module.                                                      |
 | **Tips**           | CRUD for Tips and Lessons Learned: scope and destination linking, source-trip linking, conversion, and the Unlinked state. Separate from Content because tips have their own lifecycle and survive destination deletes.                                                                                     |
-| **Trip**           | Trip lifecycle: location-block management, day-by-day expansion, POI attachment to days, status transitions, and `completed_at` tracking. Distinct from Content because trip planning logic — block ordering, duration calculation, mixed-state management — is complex enough to warrant its own boundary. |
-| **Budget**         | Budget CRUD, category and line item management, template save/apply, variance calculation (Under/Over/Close), and summary snapshot generation. Attached to trips only.                                                                                                                                      |
+| **Trip**           | Trip lifecycle: location and travel blocks, day-by-day expansion, POI attachment to days, trip length and day numbering, status transitions, `completed_at` tracking, and pinning of trips. Distinct from Content because trip planning logic — block ordering, duration calculation, mixed-state management — is complex enough to warrant its own boundary. |
+| **Budget**         | Budget CRUD, category and line item management, template save/apply/duplicate, variance calculation (Under / Close / Over / Way over, using the two global thresholds from Settings), and summary snapshot generation. Attached to trips only.                                                              |
 | **Travel Windows** | Travel Window CRUD, shortlist management, chosen-trip flagging, deletion snapshot capture for Completed trips, and archive/restore. Depends on Trip module for trip data; owns the Travel Window lifecycle entirely.                                                                                        |
 | **Search**         | FTS5 full-text search index management, global search, in-context scoped search, and filter application. Write-through sync — index updated in the same transaction as every content write.                                                                                                                 |
 | **Media**          | Image import (copy to app data directory), thumbnail generation via Sharp, hero image designation, and serving local images to the renderer via the `app://` Electron protocol. Deletion is soft — file purged explicitly, not on record delete.                                                            |
-| **Presentation**   | Read-only orchestration layer. Assembles trip concept, location summary, budget snapshot, and hero images into presentation payloads. Reads through the other modules' service interfaces. Owns the trip snapshot shape.                                                                                    |
-| **Backup**         | Local database snapshots, the optional backup folder (database + media), the startup integrity check, and restore. Works on the database file and media directory as a whole; has no knowledge of domain tables.                                                                                            |
+| **Presentation**   | Read-only orchestration layer. Assembles trip concept, itinerary summary with highlights, budget snapshot and split, and hero images (including the hero fallback rule) into presentation payloads. Reads through the other modules' service interfaces. Owns the trip snapshot shape.                    |
+| **Backup**         | Local database snapshots, the optional backup folder (database + media), the startup integrity check, the launch state (normal / first run / recovery), and restore. Works on the database file and media directory as a whole; has no knowledge of domain tables.                                      |
+| **Settings**       | Owns `userData/settings.json`: user preferences (palette, theme, budget thresholds, keymap) and remembered UI state (see UI State Store). Validates, defaults and writes the file. No database tables.                                                                                                       |
 
 ### Module Boundary Rules
 
@@ -145,12 +156,13 @@ directory is private.
 | -------------- | ----------------------------------------------------- |
 | Search         | — (reads indexed tables in its query joins)           |
 | Media          | —                                                     |
-| Backup         | — (database connection and media directory only)      |
-| Content        | Search                                                |
+| Settings       | —                                                     |
+| Backup         | Settings (database connection and media directory otherwise) |
+| Content        | Search, Settings                                      |
 | Tips           | Content, Search                                       |
-| Trip           | Content, Search                                       |
-| Budget         | Trip, Search                                          |
-| Travel Windows | Trip, Budget, Media                                   |
+| Trip           | Content, Search, Settings                             |
+| Budget         | Trip, Search, Settings                                |
+| Travel Windows | Trip, Budget, Media, Settings                         |
 | Presentation   | Content, Tips, Trip, Budget, Travel Windows, Media    |
 | Workflows      | any module                                            |
 
@@ -257,12 +269,8 @@ BrowserWindow instances. The renderer has no access to Node.js APIs.
 
 ### Status Transition Model
 
-**Country status** (manual, no enforcement on transitions):
-
-```
-Wishlist → Researching → Sampling → Planning
-  ↑_______________|_______________|__________↑  (any direction permitted)
-```
+Trips are the only content with a status. Countries, regions and cities have none —
+their depth shows in what they hold (D-09).
 
 **Trip status** (manual, no enforcement on transitions):
 
@@ -281,36 +289,58 @@ Sample → Planning → Ready → Completed
 
 ### Trip Itinerary State Machine
 
-A trip block moves through two modes. A trip can be in a mixed state — some blocks
-expanded into days, others remaining as location blocks.
+An itinerary is one ordered list of blocks of two kinds (D-27). **Location blocks**
+anchor a stay at a country, region or city and can be broken into days. **Travel
+blocks** (flight, train, bus, ferry, drive) sit between them with free-text from/to and
+a length in whole days, 0 allowed; they never have days or POIs. A trip can be in a
+mixed state — some location blocks with days, others without.
 
 ```
-  Location-Block Mode          Day-by-Day Mode
-  ───────────────────          ───────────────
-  [Block: Thailand, 7d]   →   [Day 1] [Day 2] ... [Day 7]
-  [Block: Laos, 4d]            ↑ expand() requires duration set
-  [Block: Vietnam, 5d]    →   [Day 1] [Day 2] ... [Day 5]
-                               ↑ expanded independently
+  Day 0      Days 1–7                 Day 7→8          Days 8–11
+  ───────    ─────────────────────    ─────────────    ───────────────────
+  [Flight    [Thailand, 7d]           [Train          [Laos, 4d]
+   0d]        └ expand() →             Bangkok →        (no days yet)
+              [Day 1] … [Day 7]         Vientiane, 0d]
 ```
+
+Two separate things are easy to confuse here:
+
+| What                          | Where it lives                          | Changed by                                 |
+| ----------------------------- | --------------------------------------- | ------------------------------------------ |
+| Whether a block **has days**  | Database (`trip_days` rows)             | `expand`, `expand-all`, duration changes, day deletes, block delete |
+| Whether a block is **shown open** in the trip builder | UI state (`ui.expanded_blocks`, see UI State Store) | Expand / Collapse, Expand all / Collapse all, Enter on a block |
+
+Collapsing a block only closes it in the builder. Its days, notes and POIs stay in the
+database and reappear when it is opened again (US-013, handoff 30), and presentation
+mode shows every day that exists whatever the builder shows.
 
 Transitions:
 
-- `expand(block_id, duration_days)` — creates `trip_days` rows; sets block `duration_days`
-- Expanding a block does not auto-populate days with POIs — days start empty
-- `collapse(block_id)` — removes the block's days and returns it to location-block
-  mode, keeping its duration; requires confirmation if any day has content
+- `expand(block_id, duration_days)` — location blocks only; creates `trip_days` rows and
+  sets `duration_days`. Days start empty — no POIs are added automatically
+- `expand_all(trip_id)` — the same for every location block that has a duration and no
+  days yet, in one transaction; blocks without a duration and travel blocks are skipped
+- There is no `collapse` operation on the data. A block's days go away only when the
+  block is deleted, its duration is lowered, or a day is deleted
 
-Rules for an expanded block:
+Derived values (computed on read, never stored): trip length is the sum of every block's
+`duration_days`; day numbers run across the trip in block order; a 0-day travel block in
+first position is Day 0; cost per day needs every block's length (Module 2 and Module 3
+Key behaviours in `api-contracts.md`).
+
+Rules for a block with days:
 
 - It always has exactly `duration_days` days, numbered 1..n with no gaps
 - Raising `duration_days` appends empty days; lowering it removes days from the end and
   requires explicit confirmation
-- Individual days can be inserted, deleted, reordered, and moved to another expanded
-  block of the same trip. Each of these keeps both invariants: siblings are renumbered
+- Individual days can be inserted, deleted, reordered, and moved to another block with
+  days in the same trip. Each of these keeps both invariants: siblings are renumbered
   and the block's `duration_days` is adjusted
 - `split(block_id, first_day_number)` — divides the block into two consecutive blocks,
   which is how a broad block's days are reorganized into more specific ones (US-013)
-- A block's only day cannot be deleted or moved out; collapse or delete the block instead
+- A block's only day cannot be deleted or moved out; delete the block instead
+- Changing a block's place ("Change place…") keeps its days, duration and notes
+  (handoff 29)
 
 ---
 
@@ -442,8 +472,8 @@ longer exists can never appear in results.
 
 **Filter-only browsing.** When a search has filters but no keyword, the same arms run
 without the FTS match: each selects straight from its source table with the filter
-conditions, ordered by title. This serves "filter the library by tag or status" with one
-code path and one result shape.
+conditions, ordered by title. This serves "filter by tag or trip status" with one code
+path and one result shape. Only trips have a status (D-09).
 
 Filters are conditions on the live source row, so each content type states what a
 filter means for it. A filter that has no meaning for a content type excludes that
@@ -451,7 +481,7 @@ type from the results.
 
 | Content type | Country / region / city scope                            | Status           | Tag                       | Parent context shown                       |
 | ------------ | -------------------------------------------------------- | ---------------- | ------------------------- | ------------------------------------------ |
-| country      | is that country                                          | `countries.status` | `content_tags.country_id` | —                                          |
+| country      | is that country                                          | excluded         | `content_tags.country_id` | —                                          |
 | region       | its `country_id` / is that region                        | excluded         | `content_tags.region_id`  | Country                                    |
 | city         | its `country_id` / `region_id` / is that city            | excluded         | `content_tags.city_id`    | Country > Region                           |
 | poi          | its `country_id`, or its region/city resolved through the hierarchy | excluded | `content_tags.poi_id`   | Country > Region > City                    |
@@ -523,22 +553,39 @@ consistent file.
 
 ```
 App startup
-  1. PRAGMA quick_check          → on failure: recovery screen (restore a snapshot)
+  0. No library file?            → create an empty one; launch mode = first_run
+  1. PRAGMA quick_check          → on failure: move the file aside as
+                                   wanderly-damaged-<date>.db (kept, never deleted);
+                                   launch mode = recovery (integrity_failed)
   2. Pending migrations?
        yes → snapshot  backups/pre-migration-<timestamp>.db
              run migrations in one transaction
-             on failure: roll back, restore that snapshot, show the error, do not open
+             on failure: roll back, restore that snapshot;
+                         launch mode = recovery (migration_failed) — do not open
   3. No daily snapshot in the last 24h?
        yes → snapshot  backups/daily-<date>.db
   4. Prune: keep the 7 newest daily and the 5 newest pre-migration snapshots
+  5. Load the renderer at the route for the launch mode: the app, /welcome, or /recovery
 ```
+
+Every snapshot is written with a small JSON sidecar (`<name>.json`: app version, schema
+version, record counts, size) so the restore list can show "23 countries · 412 POIs ·
+11 trips" without opening each database (handoff 21).
+
+**Recovery screen.** On `integrity_failed` the damaged file is moved beside the library
+before anything else happens, so no restore can overwrite it, and the screen names it.
+The user picks a restore point (newest selected) or another folder. On
+`migration_failed` the library is intact but on the previous schema, which this version
+of the app cannot open; the screen shows the error with details and can only quit
+(open item F).
 
 **Backup folder** (optional, strongly prompted): the user picks a folder in Settings —
 an external drive, or a folder their own sync or backup tool covers. The app writes:
 
 ```
 <chosen folder>/Wanderly Backup/
-  ├── manifest.json            ← app version, schema version, timestamps, record counts
+  ├── manifest.json            ← app version, schema version, timestamps, record counts,
+  │                              sizes, and a copy of the user's preferences
   ├── db/wanderly-<timestamp>.db   ← the 3 newest database copies
   └── media/                   ← mirror of the media directory, including thumbnails
 ```
@@ -560,19 +607,66 @@ an external drive, or a folder their own sync or backup tool covers. The app wri
 Choose a restore point (local snapshot, or a backup folder)
   1. Validate: quick_check passes; schema version is not newer than this app
   2. Confirm with the user — the current library will be replaced
+     (skipped in first run and recovery: there is nothing to lose)
   3. Snapshot the current database to backups/pre-restore-<timestamp>.db
-  4. Close the connection; swap in the restored database
-     (backup folder only: copy its media into the media directory)
-  5. Relaunch → pending migrations run → search index rebuilt
+     (skipped in first run and recovery)
+  4. Backup folder only: copy its media into the media directory, reporting progress
+  5. Copy the database to a temporary file beside the library, then close the
+     connection and swap it in — the only step that replaces anything
+  6. First run only: the folder becomes the configured backup folder, and the
+     preferences in its manifest are applied
+  7. Relaunch → pending migrations run → search index rebuilt
 ```
+
+**Choosing a folder to restore from.** The user may pick the `Wanderly Backup` folder
+itself or the folder (or drive) that contains it: Wanderly checks the picked folder and
+then one level down for a child named `Wanderly Backup` (handoff 21).
+
+**Progress.** Steps 4 and 5 send `backup:restore:progress` events with bytes and files
+done and total, so the first-run restore shows a determinate bar (handoff 31). Totals are
+known before copying starts from the manifest. Because nothing is replaced until step 5,
+a cancel during step 4 could be added safely by deleting the partly-copied files;
+whether to offer one is open item F.
 
 A local snapshot restores the database only; media files stay as they are, and any
 images referenced by the restored database but since purged show as missing. A backup
 folder restores both.
 
 **Where settings live.** The backup folder path and last-backup times are stored in
-`userData/settings.json`, not in the database, so restoring a database never changes
-where backups go.
+the `backup` section of `userData/settings.json` (UI State Store, below), not in the
+database, so restoring a database never changes where backups go.
+
+---
+
+### UI State Store
+
+Preferences and remembered UI state live in one JSON file, `userData/settings.json`,
+owned by the Settings module (handoff 14). The renderer reads it once at startup and
+writes changes through `settings:all:update` (`api-contracts.md`, Module 10).
+
+| Section       | Holds                                                                                                                                                         | Set by                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `preferences` | Palette (Paper / Atlas), theme (light / dark / system), the two budget thresholds (Close, Way over), and the keymap overrides (P2)                           | Settings screens          |
+| `ui`          | Nav collapsed, each nav section's expanded state, List / Grid per list, sort per list, Travel Window view per window, open blocks per trip, collapsed ContentsIndex rows, tutorial seen (P2) | Remembered as the user works |
+| `backup`      | Backup folder path, last backup time, first-run flag                                                                                                          | Backup module only        |
+
+Why a file in the main process, not the database and not `localStorage`:
+
+- **Not the database**, because restoring an older library must not change how the app
+  looks or where backups go, and because none of it is the user's research. Budget
+  thresholds are in this file for the same reason: they change how a difference is
+  coloured, not any amount (D-18).
+- **Not `localStorage`**, because the main process needs some of it before the renderer
+  exists (theme, to paint the window background without a flash; the backup folder),
+  and the Budget module needs the thresholds to compute variance.
+
+Rules: every key has a default; invalid values fall back to the default and are logged;
+an unreadable file is renamed aside and replaced with defaults, so it can never stop the
+app opening. Writes are atomic (temporary file, then rename) and coalesced over 250 ms,
+and the renderer applies a change at once without waiting. Ids of deleted records are
+removed from `ui` by the deleting module and also dropped on read. The file is not part
+of a local snapshot; the folder backup carries a copy of `preferences` in its manifest
+so a new machine picks them up on first-run restore.
 
 **Moving machines.** Nothing in the database stores an absolute path: media rows hold a
 filename and the `app://` handler resolves it against the current media directory. The
@@ -616,9 +710,12 @@ default-src 'self';
 script-src 'self';
 style-src 'self';
 img-src 'self' app: data:;
-font-src 'self' data:;
+font-src 'self';
 connect-src 'none';
 ```
+
+`font-src 'self'`: the three typefaces are bundled with the app (Tech Stack,
+Typefaces), so no font is ever loaded from the network or from a `data:` URI.
 
 `connect-src 'none'` enforces that the renderer makes no network requests — all
 data comes through IPC.
@@ -649,6 +746,8 @@ All data remains on the user's local machine:
   `-wal` and `-shm` companions while open)
 - Media files: Electron `app.getPath('userData')/media/`
 - Local snapshots: `app.getPath('userData')/backups/`
+- A library that failed its startup check, kept for the user:
+  `app.getPath('userData')/wanderly-damaged-<date>.db`
 - App settings and logs: `app.getPath('userData')/settings.json` and `logs/`
 - Backup folder (optional): a local path chosen by the user. The app only writes files
   there; it never uploads anything
@@ -725,21 +824,36 @@ under a second.
 
 ### Route Inventory
 
-| Route                         | View                 | Notes                                          |
-| ----------------------------- | -------------------- | ---------------------------------------------- |
-| `/`                           | Master Library       | Default view; country list with status filters |
-| `/countries/:id`              | Country Detail       | Regions, cities, POIs, tips, budgets nested    |
-| `/regions/:id`                | Region Detail        | Cities, POIs, tips nested                      |
-| `/cities/:id`                 | City Detail          | POIs, tips nested                              |
-| `/pois/:id`                   | POI Detail           | Full POI record with media                     |
-| `/trips`                      | Trip Library         | All trips with status filter                   |
-| `/trips/:id`                  | Trip Detail          | Itinerary builder — block and day-by-day modes |
-| `/trips/:id/budget`           | Budget View          | Budget categories, line items, summary         |
-| `/travel-windows`             | Travel Windows       | Active and archived windows                    |
-| `/travel-windows/:id`         | Travel Window Detail | Shortlisted trips, chosen flag                 |
-| `/travel-windows/:id/present` | Presentation Mode    | Full-screen; no app chrome                     |
-| `/tips`                       | Tips Library         | General and destination tips, filterable       |
-| `/search`                     | Search Results       | Global search with filters                     |
+The app opens at one of three entry points, chosen by the main process from the launch
+state (Backup and Recovery Pattern): the app shell at `/`, `/welcome` or `/recovery`.
+The last two are full-window screens without the shell.
+
+| Route                                | View                     | Notes                                                                                 |
+| ------------------------------------ | ------------------------ | ------------------------------------------------------------------------------------- |
+| `/`                                  | Countries list           | Default view (D-03); List / Grid; pinned first, then newest; tag filter (P1)          |
+| `/countries/:id`                     | Country Detail           | Notes, Inside <country>, photos, tips, trips in this country                           |
+| `/countries/:id/read`                | Read everything (P1)     | US-063; not built in P0                                                                |
+| `/regions/:id`                       | Region Detail            | Cities, POIs, tips; "← <country>"                                                      |
+| `/cities/:id`                        | City Detail              | POIs, tips; "← <parent>"                                                               |
+| `/pois/:id`                          | POI Detail               | Description, practical notes, photos, in trips                                         |
+| `/trips`                             | Trips list               | List / Grid; pinned first, then newest; status (single-select), country and tag filters |
+| `/trips/:id`                         | Trip builder             | Location and travel blocks, days; `?day=<id>` scrolls to and selects a day or POI      |
+| `/trips/:id/budgets/:budgetId`       | Budget                   | One of the trip's budgets; the switcher moves between them (handoff 11)                |
+| `/trips/:id/budgets`                 | —                        | Redirects to the primary budget, or back to the trip if it has none                    |
+| `/travel-windows`                    | Travel Windows           | Upcoming and Past; `?archived=1` shows archived windows                                |
+| `/travel-windows/:id`                | Travel Window Detail     | Side by side or one at a time (remembered per window)                                  |
+| `/travel-windows/:id/present`        | Presentation Mode        | Full-screen; no app chrome; summary, full detail and comparison are in-page states     |
+| `/tips`                              | Tips list (P1)           | One list with TIP / LESSON labels; filters                                             |
+| `/tips/:id`                          | Tip detail (P1)          | Tip or lesson with its follow-ups                                                      |
+| `/search`                            | Search Results           | Global search with filters. The ⌘F overlay is not a route; it opens over any view     |
+| `/settings`                          | Settings                 | Redirects to `/settings/appearance`                                                    |
+| `/settings/appearance`               | Settings › Appearance    | Palette, theme, sidebar                                                                |
+| `/settings/budget`                   | Settings › Budget        | Thresholds and the template list                                                       |
+| `/settings/budget/templates/new`     | New budget template      | Blank, copy of a template, or an existing budget                                       |
+| `/settings/budget/templates/:id`     | Edit budget template     | Autosaves                                                                              |
+| `/settings/backup`                   | Settings › Backup & restore | Snapshots, backup folder, restore list                                              |
+| `/welcome`                           | First run                | No shell. Start fresh, or restore from a backup folder (with progress)                 |
+| `/recovery`                          | Recovery                 | No shell. Library failed its startup check, or an update could not be applied          |
 
 ### Key Frontend Constraints
 
@@ -748,7 +862,15 @@ under a second.
 - **No mobile layout** — mobile support is deferred scope; do not build responsive
   variants
 - **Presentation mode** is a distinct full-screen route with all app chrome hidden;
-  keyboard-navigable per US-042 (Escape, Arrow keys, Enter, Backspace, Tab)
+  keyboard-navigable per US-042 (Escape, Arrow keys, Enter, Backspace, Tab, plus C for
+  comparison, 1–5 for full-detail sections and ? for the shortcut sheet — D-22).
+  Single-letter keys are bound only inside presentation; everywhere else they would fire
+  while typing notes, so the app's own shortcuts all use ⌘ / Ctrl (D-31)
+- **Fonts** are the three bundled families (Tech Stack, Typefaces); no font is fetched
+  at runtime
+- **UI state** that should survive a restart (nav, list views and sorts, open blocks per
+  trip, Travel Window view) is read from and written to the Settings module, never kept
+  only in component state or `localStorage` (UI State Store)
 - **TipTap editors** render in all notes fields across all content types; rich text
   must render correctly in presentation mode (read-only TipTap instance)
 - **Autosave** (US-007): edits to text fields are saved 1 second after the last
@@ -773,6 +895,7 @@ No work should begin on an affected area until the item is resolved.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ---------------------------- | ------------------------------------------------------------------------ |
 | B   | **Native module packaging** — on the first packaged build for each target (macOS arm64, macOS x64, Windows x64), confirm `better-sqlite3` and Sharp load from the unpacked ASAR directory and that the database opens and an image imports | DevOps / Build      | First packaged build         | App crashes on launch, or image import fails, in the packaged app only   |
 | D   | **TipTap plain text extraction** — confirm the `extractPlainText(tiptapJson)` utility correctly handles all TipTap node types used in the app (bold, italic, lists, links, etc.) before FTS5 indexing is built     | Backend Engineer    | Search module implementation | FTS5 index contains malformed body text; search returns degraded results |
+| F   | **Recovery and first-run screens need two design answers.** (1) Can a first-run restore be cancelled mid-copy? The architecture allows it until the database swap; the design shows no Cancel (design question F). (2) After a *failed migration* the design offers "Open library", but this version of the app cannot open a library on the previous schema — the screen can only show the error and quit. The design needs a different action there | `/uiux` with owner  | First-run restore and recovery screens | First-run restore ships without Cancel; the migration-failed screen shows a button that cannot work |
 
 **Resolved:**
 
