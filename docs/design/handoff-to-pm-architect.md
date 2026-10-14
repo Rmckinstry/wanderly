@@ -1,6 +1,6 @@
 ---
 title: Design handoff to /pm and /architect
-status: /pm and /architect items done (2026-10-13) — questions D, E, F and two new design items open
+status: all design questions answered (2026-10-13) — two /pm wording fixes open (items 32, 33)
 last-updated: 2026-10-13
 ---
 
@@ -114,6 +114,35 @@ Added while reconciling the API with the screen specs (not in the handoff list):
 - **I — Failed migration screen.** recovery-and-first-run.md offers "Open library" after an update fails, but this version of the app cannot open a library still on the previous schema. The screen can only show the error and quit. It needs a different action.
 - **J — "Change place…" across countries.** The design keeps a block's days when the new place is in the same country. The API also accepts a place in another country and keeps the days. If the picker should offer only the block's own country, that is a design rule, not an API limit.
 
+### `/uiux` response — 2026-10-13
+
+Read both responses against the design docs. Nothing applied by `/pm` or `/architect` conflicts with the design. Answers to the open questions are in the table below (D-48 – D-53 in [style-guide.md](style-guide.md)); the screen specs are updated to match:
+
+- **trips-and-trip-builder.md** — collapse is a view change with no dialog (D-48); "Expand to days" creates days the first time only; "Change place…" offers other countries (D-49).
+- **recovery-and-first-run.md** — failed-migration state (D-50); Cancel during the photo copy and "Finishing…" during the swap (D-51).
+- **presentation.md** — full-bleed hero, `mat` as the no-photo placeholder, and the hero fallback chain now points at architecture.md (D-52).
+- **tips.md** — bordered follow-up box confirmed (D-53).
+- **tokens.json / style-guide.md** — `mat` usage and the decision log.
+
+**For `/pm` — two wording fixes:**
+
+| # | Change | Decision | Story |
+| --- | --- | --- | --- |
+| 32 | Collapsing a block shows no warning — days are hidden, never removed, so there is nothing to warn about. Drop "the app warns me first if any of its days have content" | D-48 | US-013 |
+| 33 | Budgets belong to trips, not countries: drop "budgets" from what a country shows. The country page lists its trips, and each trip card shows its estimate | `/pm` question on US-025 | US-025 |
+
+**For `/architect` — confirm one rule:** item 32 above matches the Collapse-is-UI-state decision; and D-49 relies on the API's existing behaviour (any place keeps the days) plus automatic linking/unlinking of the trip's countries when a block changes country — confirm the trip–country link updates on `trip:block:update`.
+
+**Design backlog — screens still to design when scheduled:**
+
+| Story | Priority | What needs designing |
+| --- | --- | --- |
+| US-063 Read everything | P1 | The reading view (stitched notes under place headings, links to each place), its empty state, and the "Read everything" entry in the country's More ▾ |
+| US-064 Split budgets | P1 | Shared / Split switch and travelers editor (name, share %, must total 100%) on the Budget screen; cost per person in the snapshot; "Split 70 / 30" note on the presentation summary; per-person amounts in presentation full detail only |
+| US-065 Help / FAQ | P2 | Help view and its route |
+| US-066 First-use tutorial | P2 | Tutorial flow with its own sample content; offered after "Start fresh", replayable from Help |
+| US-067 Keyboard shortcuts | P2 | Settings › Keyboard: shortcut list, rebinding, clash handling, reset to defaults |
+
 ## Later (P2)
 
 | # | Item |
@@ -127,15 +156,15 @@ Added while reconciling the API with the screen specs (not in the handoff list):
 | A | Is the "Read everything" view (item 16) P0, P1 or P2? | Country detail (a "Read everything" entry point in More ▾) | Country detail build | **Answered: P1** — country detail ships without the entry point until US-063 |
 | B | Should the Trips list status filter allow several statuses at once (US-027, P1)? | Trips list | Trips list build (P1 filter) | **Answered: single-select** — design stands |
 | C | When an expanded block is collapsed, are its days and their content kept (design) or removed (one reading of US-013)? | Trip builder — collapse confirm copy and data | **Trip builder build** | **Answered: kept, hidden** — from the design spec; US-013 now says so |
-| D | Should the presentation hero photo sit on a `mat` frame (as the token describes) or bleed to its own edges (as the hi-fi shows)? | Presentation summary | Presentation polish (not blocking) | Open — design |
-| E | Follow-up lesson block on Tip detail: bordered `surface` box (spec) instead of the wireframe's left rule — OK? | Tip detail (P1) | Tips build | Open — design |
-| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** | Open — design. `/architect`: nothing is replaced until the final database swap, so a Cancel during the copy is safe to add. v1 ships without one unless design adds it |
+| D | Should the presentation hero photo sit on a `mat` frame (as the token describes) or bleed to its own edges (as the hi-fi shows)? | Presentation summary | Presentation polish (not blocking) | **Answered: full-bleed** (D-52) — `mat` is now the no-photo placeholder colour |
+| E | Follow-up lesson block on Tip detail: bordered `surface` box (spec) instead of the wireframe's left rule — OK? | Tip detail (P1) | Tips build | **Answered: bordered box** (D-53) |
+| F | Can a first-run restore be cancelled mid-copy? (Design shows no Cancel once copying starts.) | First run — restore | **First-run restore build** | **Answered: yes** (D-51) — "Cancel — nothing has changed yet" while photos copy; "Finishing…" with no Cancel during the swap |
 | G | Help / tutorial priority and scope (item 20) | none in P0 | P1 planning | **Answered: both P2**; tutorial replayable, own sample content |
 | H | Per-person / split budgets (item 18) | Presentation, Budget | When `/pm` schedules item 18 | **Answered: P1** (US-064). Presentation's ledger gains a "Split 70 / 30" note; per-person amounts in full detail only |
-| I | Failed-migration recovery state offers "Open library", which the app cannot do (see `/architect` response) | Recovery screen | **Recovery screen build** | Open — design |
-| J | Should "Change place…" offer only places in the block's own country? (API accepts any and keeps the days) | Trip builder (not blocking) | Trip builder polish | Open — design |
+| I | Failed-migration recovery state offers "Open library", which the app cannot do (see `/architect` response) | Recovery screen | **Recovery screen build** | **Answered** (D-50) — "couldn't update your library — it's safe and unchanged"; Quit, Copy details, Show library file; advice to reinstall the previous version |
+| J | Should "Change place…" offer only places in the block's own country? (API accepts any and keeps the days) | Trip builder (not blocking) | Trip builder polish | **Answered: any country** (D-49) — own country first, then "Other countries"; another country is linked automatically and the old one unlinks if unused |
 
-**Screens that cannot be finished until a question is answered:** the first-run restore progress step (F, only if a Cancel is wanted) and the recovery screen's failed-migration state (I). Everything else can be built now with the assumptions stated in its spec.
+**Screens that cannot be finished until a question is answered:** none — every design question is answered (2026-10-13).
 
 ## P0 coverage
 

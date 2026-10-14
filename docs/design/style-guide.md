@@ -1,7 +1,7 @@
 ---
 title: Style guide
 status: locked (design system v1, D-23; critique round 1 passed, D-45)
-last-updated: 2026-10-09
+last-updated: 2026-10-13
 ---
 
 # Wanderly — style guide
@@ -77,7 +77,7 @@ Balanced: airy at rest, dense content stays readable. One label per section at m
 ## Iconography and imagery
 
 - Icons are rare and functional: chevrons, drag handle, pin, close, collapse. Stroke style, `currentColor`, 16px grid, 1.5px stroke. Never icon-only buttons in the workspace; icon buttons (close, collapse) always carry an accessible label and a tooltip.
-- Photos are small in the workspace (3-across thumbnails) and framed on a `mat` in presentation. The hero is always chosen by the person. A missing photo shows a quiet neutral block, never a broken image.
+- Photos are small in the workspace (3-across thumbnails) and full-bleed in presentation (D-52); `mat` is the colour of the "no photo" placeholder. The hero is always chosen by the person. A missing photo shows a quiet neutral block, never a broken image.
 - No illustrations, mascots, emoji or stock textures.
 
 ## Voice
@@ -143,6 +143,12 @@ Plain, specific, first-person-adjacent — it's your notebook. Verbs on buttons 
 | D-45 | Critique round 1 fixes: keycaps on filled buttons are outline-only (was 4.05:1); keycap text 12px; selected nav = `surface` + `border-control` outline + `accent` label; `:focus-visible` 2px accent ring defined for every control (not drawn on the mockups — the user preferred them without it; it shows only on keyboard focus); drawn grip icon; nested radius 1:2 (PoiCard `radius-sm` in a block); spacing snapped to the scale; new `lede` 18/1.6 style for presentation; presentation estimate uses `money-lg`; Paper `cat-5` adjusted (PL #c6bfb2, PD #454c5b) so route neighbours are ≥3:1; travel blocks use `sidebar` fill and mode labels | critique-design, round 1 |
 | D-46 | Trip builder rows read: day column (left-aligned, one 80px column for block headers and day rows), location, then tag / note / duration / actions on the right | User: a single left column of days scans smoothly down the itinerary |
 | D-47 | Trip builder rows carry only days, location, tags and actions — no system-written labels ("evening", "overnight", "same day"), no inline notes and no separate duration; the person writes notes in the block | User: cleaner rows; notes are the user's to write |
+| D-48 | Collapsing an expanded block is a view choice: no dialog, nothing deleted, remembered per trip. "Expand to days" creates the days the first time; after that expand/collapse only show or hide them. Presentation shows every day that exists | `/architect` made collapse UI state (handoff 30); a confirm for a change that loses nothing is friction |
+| D-49 | "Change place…" offers the block's own country first, then other countries; any choice keeps the days. Another country is linked to the trip automatically, and the old one unlinks if no other block uses it | Question J; the data keeps days either way |
+| D-50 | Failed-migration recovery: "Wanderly couldn't update your library — it's safe and unchanged"; Quit (primary), Copy details, Show library file; advice to reinstall the previous version. No "Open library" | Question I; this version cannot open a library on the old schema |
+| D-51 | First-run restore can be cancelled while photos copy ("Cancel — nothing has changed yet"); the final swap shows "Finishing…" with no Cancel | Question F; nothing is replaced until the final swap |
+| D-52 | Presentation hero photo is full-bleed (no `mat` frame); `mat` becomes the no-photo placeholder colour | Question D; matches the approved hi-fi |
+| D-53 | Follow-up lessons on Tip detail sit in a bordered `surface` box, not a left-rule card | Question E |
 | D-29 | "Start a trip" from a country creates the trip with only that country linked (its chip in the header) — no location block | User decision; the builder starts clean and the user places the first block themselves |
 
 ## Vibe summary

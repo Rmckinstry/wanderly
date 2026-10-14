@@ -2,7 +2,7 @@
 title: Tips and lessons learned (P1)
 status: ready for build (P1)
 stories: [US-006, US-010, US-050, US-051, US-052, US-053, US-054, US-055]
-last-updated: 2026-10-09
+last-updated: 2026-10-13
 ---
 
 # Tips and lessons learned (P1)
@@ -63,7 +63,7 @@ Edge cases:
 - US-010 / US-051 linked place deleted → Unlinked state, shows former place.
 - US-055 original tip never changed; several follow-ups; follow-up inherits scope; survives tip deletion; unlinked tip needs a place first → as above.
 
-Follow-up block styling note: the wireframe used a left-rule block; the spec uses a bordered `surface` block with `radius-lg` instead, to stay clear of the left-border-card trope (critique checklist). Confirm in review.
+Follow-up block styling note: the wireframe used a left-rule block; the spec uses a bordered `surface` block with `radius-lg` instead, to stay clear of the left-border-card trope (critique checklist) — confirmed (D-53).
 
 ---
 
