@@ -7,7 +7,7 @@ last-updated: 2026-10-09
 
 # Budget
 
-Wireframes: Budget, BudgetEmpty, SettingsTemplateNew (templates, see settings.md). No hi-fi; uses BudgetTable, Variance and BudgetSnapshot from the design system.
+Wireframes: Budget, BudgetEmpty, TemplateOverwrite (apply a template over existing categories), SettingsTemplateNew (templates, see settings.md). Hi-fi: Budget (Budget, BudgetDark) — summary, table with Variance, way-over pill, pending actuals; uses BudgetTable, Variance and BudgetSnapshot from the design system.
 
 ---
 

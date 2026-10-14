@@ -7,7 +7,7 @@ last-updated: 2026-10-09
 
 # Travel Windows
 
-Wireframes: TWList, TWDetail, TWPast. No hi-fi (shares Trip builder / presentation patterns).
+Wireframes: TWList, TWNew, TWDetail, TWPast. Hi-fi: Travel Window side by side (Window, WindowDark) — 3 trips, with an unestimated, untagged sample trip showing the missing-field copy.
 
 ---
 

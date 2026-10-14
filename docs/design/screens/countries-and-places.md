@@ -9,7 +9,7 @@ last-updated: 2026-10-09
 
 The master list and the place pages that hold a person's research. Country detail is a hero screen (D-01).
 
-Wireframes: CountriesList, CountriesGrid, CountryDetail, CountryStub, RegionDelete. Hi-fi: Country detail (Paper light / dark).
+Wireframes: CountriesList, CountriesGrid, CountryDetail, CountryStub, CountryRefused (delete refused while trips use the country), CityDetail, RegionDelete. Hi-fi: Country detail (Paper light / dark).
 
 ---
 

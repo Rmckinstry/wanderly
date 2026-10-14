@@ -149,6 +149,7 @@ Plain, specific, first-person-adjacent — it's your notebook. Verbs on buttons 
 | D-51 | First-run restore can be cancelled while photos copy ("Cancel — nothing has changed yet"); the final swap shows "Finishing…" with no Cancel | Question F; nothing is replaced until the final swap |
 | D-52 | Presentation hero photo is full-bleed (no `mat` frame); `mat` becomes the no-photo placeholder colour | Question D; matches the approved hi-fi |
 | D-53 | Follow-up lessons on Tip detail sit in a bordered `surface` box, not a left-rule card | Question E |
+| D-54 | Keycaps keep `radius-sm` (4px) inside 6px buttons — an accepted exception to the 1:2 nested-radius rule at this size | Critique round 1 nit; 3px is off the radius scale and the difference is invisible at 20px |
 | D-29 | "Start a trip" from a country creates the trip with only that country linked (its chip in the header) — no location block | User decision; the builder starts clean and the user places the first block themselves |
 
 ## Vibe summary

@@ -166,6 +166,8 @@ Read both responses against the design docs. Nothing applied by `/pm` or `/archi
 
 **Screens that cannot be finished until a question is answered:** none — every design question is answered (2026-10-13).
 
+**Drawing status (2026-10-13):** every P0 state is now drawn. Batch 5 wireframes added CountryRefused, CityDetail, TripStatus, TripFromWindow, TripShorten, TripSplit, TWNew and TemplateOverwrite; Recovery shows the failed-migration state (D-50) and FirstRunRestore the cancellable copy (D-51). Travel Window (side by side) and Budget now have hi-fi in Paper light and dark. Older wireframe boards were brought in line with the hi-fi (toolbar band, selected nav, day column and row order — D-42, D-46, D-47). The nine Phase 7 components are now cards in the design system. See links.md.
+
 ## P0 coverage
 
 Every P0 story maps to a screen file:

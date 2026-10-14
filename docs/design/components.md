@@ -36,7 +36,7 @@ Labeled actions; every button says what it does in words, never icon-only.
 A row of labeled actions for the current record, which changes with what is selected.
 
 **Variants**
-- `record` — top of a country, region or city: + Region, + City, + POI, + Tip, then the primary action at the right (Start a trip).
+- `record` — top of a country, region or city: + Region, + City, + POI, + Tip, then, at the right, a quiet "More" menu (Pin to sidebar, Rename, Delete…; Read everything once US-063 ships) and the primary action (Start a trip). Region and city pages have the same row minus Start a trip.
 - `contextual` — trip builder: shows the selection's name as a lead label, then its actions. Nothing selected: + Location block, Status. Block selected: Expand to days, Set duration, Split, Remove. Day selected: + POI, + Note, Move to…, Remove. POI on a day selected: Remove from day, Move to day…, Open POI.
 
 **Look** (D-42) — a full-width band across the content area: `surface` fill, 1px `border` above and a 1px `border-control` rule below, so the page clearly divides into header / toolbar / content. Buttons inside are outlined (`border-control`) on `bg`, weight 500, so they stand off the band; the add "+" icons take `accent`; the primary keeps its accent fill. In `contextual`, the selection leads as a chip on `surface-active`: "Selected" in `accent` at 12px/600, then the name in `ui-strong` and its length in `num-sm`. A 1px `border` divider separates the selection's actions from the add actions at the right. The band sticks to the top of the scroll area.
@@ -441,7 +441,7 @@ A labeled row on the Settings page: the setting's name and one-line explanation 
 
 ## Phase 7 additions
 
-These were drawn on the wireframes and hi-fi but had no spec card yet. They use only existing tokens. They are not yet in the design system artifact; add them there when it is next revised.
+These were drawn on the wireframes and hi-fi but had no spec card yet. They use only existing tokens. They are also cards in the design system artifact (SegmentedControl, FilterMenu, Menu, PickerPopover, FormDialog, Banner, TypeLabel, Toast, DayRow).
 
 ### SegmentedControl
 

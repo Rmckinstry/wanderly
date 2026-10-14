@@ -9,7 +9,7 @@ last-updated: 2026-10-13
 
 The trip builder is a hero screen (D-01): the hardest interaction in the app.
 
-Wireframes: TripsList, TripsGrid, TripBlocks, TripMixed, TripSearch, TripNoCountries. Hi-fi: Trip builder (Paper light / dark).
+Wireframes: TripsList, TripsGrid, TripBlocks, TripMixed, TripSearch, TripNoCountries, TripStatus (status menu), TripFromWindow (new trip from a Travel Window), TripShorten (shorten an expanded block), TripSplit. Hi-fi: Trip builder (Paper light / dark).
 
 ---
 
