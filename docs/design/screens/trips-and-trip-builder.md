@@ -2,14 +2,14 @@
 title: Trips list and trip builder
 status: ready for build
 stories: [US-005, US-012, US-013, US-014, US-015, US-016, US-016b, US-021, US-058]
-last-updated: 2026-10-09
+last-updated: 2026-10-13
 ---
 
 # Trips list and trip builder
 
 The trip builder is a hero screen (D-01): the hardest interaction in the app.
 
-Wireframes: TripsList, TripsGrid, TripBlocks, TripMixed, TripSearch, TripNoCountries. Hi-fi: Trip builder (Paper light / dark).
+Wireframes: TripsList, TripsGrid, TripBlocks, TripMixed, TripSearch, TripNoCountries, TripStatus (status menu), TripFromWindow (new trip from a Travel Window), TripShorten (shorten an expanded block), TripSplit. Hi-fi: Trip builder (Paper light / dark).
 
 ---
 
@@ -28,7 +28,7 @@ States:
 - empty — EmptyState `section` "No trips yet. Start one from a country, or here." + "+ New trip".
 - filtered, no match — EmptyState `search` "No Ready trips in Japan — remove a filter" + Clear filters.
 
-Interactions: row/card opens the builder; List/Grid and sort remembered. Status is single-select in the wireframe (one SegmentedControl choice); Country and Tag are multi-select FilterMenus. Different filters combine with AND. US-027 (P1) asks for several statuses at once — see open question B.
+Interactions: row/card opens the builder; List/Grid and sort remembered. Status is single-select in the wireframe (one SegmentedControl choice); Country and Tag are multi-select FilterMenus. Different filters combine with AND. US-027 (P1) is single-select to match.
 
 Keyboard: as Countries list (Up/Down rows, Enter opens, Alt+Up/Down reorders pinned).
 
@@ -64,7 +64,8 @@ Interactions:
 - + Location block → PickerPopover of places in the linked countries (countries, regions, cities, with counts); picking inserts after the selected block (or at the end) and selects it.
 - + Travel block → inserts a travel block (mode Menu: Flight, Train, Bus, Ferry, Drive; From / To free text; duration whole days or 0; notes). If inserted first with 0 days it is Day 0; later 0-day travel shows the days it sits between ("Day 2→3"). The header shows no automatic notes (D-47) — the person writes their own in the block's notes field (e.g. "leaves after work").
 - + Country → PickerPopover of all countries with "New country '…'" at the bottom.
-- Expand to days → the block opens into DayRows numbered across the trip ("Days 3–8"); days start empty (US-013). Collapse to block → if any day has content: ConfirmDialog `warning` "Collapse Chiang Mai? Its 6 days keep their notes and POIs, hidden until you expand again." — nothing is deleted (open question C).
+- Expand to days → the first time, creates the block's days (one per day of its duration) and opens them as DayRows numbered across the trip ("Days 3–8"); days start empty (US-013). After that, expanding and collapsing only show and hide the days (D-48).
+- Collapse to block → hides the block's days; no dialog and nothing is deleted. Expanding again shows them with their notes and POIs. Collapsing is a view choice remembered per trip, not a change to the trip — presentation shows every day that exists, collapsed or not (D-48).
 - Expand all / Collapse all → applies to every location block with a duration; blocks without duration and travel blocks are skipped; the count updates live.
 - Set duration → inline number Field in the block header. Reducing below the number of filled days → ConfirmDialog `warning` "Days 5 and 6 will be removed, with their notes and 2 POIs" (Continue / Cancel).
 - Split at day… → Menu of the block's days; the block becomes two blocks of the same place, each keeping its days.
@@ -92,7 +93,7 @@ Edge cases:
 - US-012 reorder blocks → drag or keyboard drag.
 - US-012 block at any level, mixed levels → PickerPopover lists all levels together, with their path in `text-muted`.
 - US-012 duration optional → "Set duration" shown; trip length shows "12+ days".
-- US-012 refine a block over time → select block → "Change place…" lives in More ▾ of the block (keeps days if the new place is in the same country).
+- US-012 refine a block over time → select block → "Change place…" (More ▾ of the block) opens a PickerPopover: the block's own country and its regions and cities first, then an "Other countries" group. Any choice keeps the block's days, duration and notes. Choosing a place in another country links that country to the trip (its chip appears); the old country stays linked until the user removes its chip (D-49).
 - US-012 deleting a block never deletes the place → Remove copy says "not from your library".
 - US-012 country stays linked while used → chip × disabled with tooltip.
 - US-012 region/city used by a block deleted → block widens to the parent with a one-time `text-muted` line "Was Chiang Mai — now Thailand".
@@ -102,13 +103,13 @@ Edge cases:
 - US-013 days start empty → DayRow EmptyState `inline` "Empty day — add a POI or a note".
 - US-013 reduce duration after expanding → warning dialog above.
 - US-013 split / move days between blocks → Split at day…; drag days.
-- US-013 collapse with content → warning dialog (content kept).
+- US-013 collapse with content → no dialog; days are hidden, not deleted (D-48; `/pm` to drop "warns me first" from US-013).
 - US-014 scope + expand to full library → SearchOverlay `trip-builder`.
 - US-014 same POI on several days / reorder within a day / zero POIs → allowed; drag; empty-day line.
 - US-015 notes and POIs coexist, notes-only days, rich text → DayRow.
 - US-016 any order, back to earlier status, no content changes → status Menu, no confirm.
 - US-016b date default today, any date, retained when status moves back, shown in Travel Windows → date Field rules; hidden (not deleted) when not Completed.
-- US-021 per person → not shown in v1 (D-28, handoff 18).
+- US-021 per person → not shown in v1 (D-28; split budgets later, US-064).
 - Travel blocks (D-27) → never expand, take no POIs, never create budget lines; count toward length and per-day cost.
 
 Handoff notes:
@@ -118,4 +119,4 @@ Handoff notes:
 - PoiCards inside a block use `radius-sm`; blocks `radius-lg` (1:2).
 - DayRow: day label in the same 80px column, indented 44px (grip 20 + gap 12 + padding 12) so block headers and days share one left edge; DayRow padding `space-3` otherwise.
 - Grip: drawn 6-dot icon, 20×24 hit area, `text-muted`.
-- Expanded state per trip is remembered (handoff 14).
+- Expanded state per trip is remembered (UI State Store in `architecture.md`).

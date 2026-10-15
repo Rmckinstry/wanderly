@@ -14,12 +14,15 @@
 CREATE TABLE countries (
   id          TEXT    NOT NULL PRIMARY KEY,  -- cuid2
   name        TEXT    NOT NULL UNIQUE,
-  status      TEXT    NOT NULL DEFAULT 'Wishlist'
-    CHECK (status IN ('Wishlist', 'Researching', 'Sampling', 'Planning')),
-    -- No Completed state — countries have no completion lifecycle
+  -- No status: a country is a research container and its depth shows in its
+  -- counts (D-09). The earlier Wishlist → Planning status was removed.
   notes       TEXT,                          -- TipTap JSON
+  pin_position INTEGER,
+    -- NULL = not pinned. Non-null = pinned, and its place in the hand-set pinned
+    -- order (1 = first). Pinned positions are 1..n with no gaps (FR14, US-025).
   created_at  TEXT    NOT NULL,
-  updated_at  TEXT    NOT NULL
+  updated_at  TEXT    NOT NULL,
+  CHECK (pin_position IS NULL OR pin_position >= 1)
 );
 
 CREATE TABLE regions (
@@ -126,14 +129,19 @@ CREATE TABLE trips (
     -- restored automatically if trip is marked Completed again.
     -- Drives the Completed badge display in Travel Windows (US-035).
   notes         TEXT,                        -- TipTap JSON (trip concept / description)
+  pin_position  INTEGER,
+    -- Same rule as countries.pin_position: NULL = not pinned; otherwise the
+    -- trip's place in the pinned order, 1..n with no gaps (FR14, US-005).
   created_at    TEXT    NOT NULL,
-  updated_at    TEXT    NOT NULL
+  updated_at    TEXT    NOT NULL,
+  CHECK (pin_position IS NULL OR pin_position >= 1)
 );
 
 -- Many-to-many: which countries a trip references.
 -- Used to scope in-context search to relevant countries (US-026).
--- Always a superset of the countries its blocks use: a block adds its country's
--- link, and a link cannot be removed while a block uses that country. Links with
+-- Always a superset of the countries its location blocks use: a location block adds
+-- its country's link, and a link cannot be removed while a block uses that country.
+-- Travel blocks have no country and add no link. Links with
 -- no block behind them are allowed (a trip can name a country before it has blocks).
 CREATE TABLE trip_countries (
   trip_id     TEXT    NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -143,27 +151,55 @@ CREATE TABLE trip_countries (
   PRIMARY KEY (trip_id, country_id)
 );
 
--- Location blocks: high-level itinerary mode (US-012)
+-- The itinerary: an ordered list of location blocks and travel blocks (US-012, D-27)
 CREATE TABLE trip_blocks (
   id            TEXT    NOT NULL PRIMARY KEY,
   trip_id       TEXT    NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
   position      INTEGER NOT NULL,            -- manual ordering within the trip
-  country_id    TEXT    NOT NULL REFERENCES countries(id) ON DELETE RESTRICT,
-    -- country_id always required — enables efficient trip-country scoping for search.
+  kind          TEXT    NOT NULL DEFAULT 'location'
+    CHECK (kind IN ('location', 'travel')),
+    -- location = a stay at a country, region or city; can be expanded into days.
+    -- travel   = a flight, train, bus, ferry or drive between places; never has days.
+  country_id    TEXT    REFERENCES countries(id) ON DELETE RESTRICT,
+    -- Required on a location block, always null on a travel block (CHECKs below).
+    -- Enables efficient trip-country scoping for search.
     -- RESTRICT: a country in use by any block cannot be deleted. The application
     -- checks first and returns RECORD_IN_USE; the constraint is the backstop.
-    -- region_id and city_id optionally narrow the block's geographic focus.
+    -- region_id and city_id optionally narrow a location block's geographic focus.
     -- SET NULL: deleting the region or city widens the block to its parent level
     -- (city → region or country, region → country). Days and duration are kept.
   region_id     TEXT    REFERENCES regions(id) ON DELETE SET NULL,
   city_id       TEXT    REFERENCES cities(id) ON DELETE SET NULL,
-  duration_days INTEGER,                     -- nullable until explicitly set
+  travel_mode   TEXT
+    CHECK (travel_mode IN ('flight', 'train', 'bus', 'ferry', 'drive')),
+    -- Required on a travel block, always null on a location block.
+  from_label    TEXT,                        -- travel only: free text, e.g. "Chicago"
+  to_label      TEXT,                        -- travel only: free text, e.g. "Bangkok"
+  duration_days INTEGER,
+    -- Whole days; nullable until explicitly set (no half days).
+    -- Location block: at least 1. Travel block: 0 or more.
+    -- A 0-day travel block in position 1 is "Day 0" (leaving the evening after
+    -- work). Trip length is the sum of every block's duration_days, so a 0-day
+    -- block adds nothing to it. Day 0 and the "Days 3–8" labels are derived when
+    -- read; nothing about them is stored.
   notes         TEXT,                        -- TipTap JSON
   created_at    TEXT    NOT NULL,
-  updated_at    TEXT    NOT NULL
+  updated_at    TEXT    NOT NULL,
+  CHECK (kind = 'location' OR (country_id IS NULL AND region_id IS NULL AND city_id IS NULL
+                               AND travel_mode IS NOT NULL)),
+  CHECK (kind = 'travel'   OR (country_id IS NOT NULL AND travel_mode IS NULL
+                               AND from_label IS NULL AND to_label IS NULL)),
+  CHECK (duration_days IS NULL
+         OR duration_days >= (CASE kind WHEN 'location' THEN 1 ELSE 0 END))
+  -- Whether a block is shown open or collapsed in the trip builder is not stored
+  -- here: it is per-trip UI state (see UI State Store in architecture.md).
+  -- A block either has days or it does not; collapsing it never removes them.
 );
 
--- Individual days expanded from a block (US-013)
+-- Individual days expanded from a location block (US-013).
+-- Once a block has days they stay until the block is deleted, its duration is
+-- lowered (removes days from the end, with confirmation), or a day is deleted.
+-- Collapsing the block in the trip builder only hides them (US-013).
 CREATE TABLE trip_days (
   id          TEXT    NOT NULL PRIMARY KEY,
   block_id    TEXT    NOT NULL REFERENCES trip_blocks(id) ON DELETE CASCADE,
@@ -215,11 +251,13 @@ CREATE TABLE budgets (
     -- A trip with any budgets has exactly one primary: the first budget created
     -- becomes primary; the user can move the flag; deleting the primary promotes
     -- the oldest remaining budget. Always 0 for templates.
-  num_travelers   INTEGER,
-    -- Per-budget (not per-trip) because multiple budget scenarios on the same trip
-    -- may model different traveler counts. Used for cost-per-person calculation.
-  close_threshold REAL    NOT NULL DEFAULT 0.10,
-    -- User-configurable variance threshold for the Close indicator. Default 10%.
+  -- No traveler count: budgets are shared (one pot) in this version and cost per
+  -- person is not shown (D-28). Split budgets are planned for P1 — see Planned
+  -- Schema Changes.
+  -- No variance thresholds: Close and Way over are two global settings, not
+  -- per-budget values (D-18). They live in settings.json (UI State Store in
+  -- architecture.md), because they change how amounts are coloured, not the
+  -- amounts themselves.
   is_template     INTEGER NOT NULL DEFAULT 0,
     -- 1 = saved template (trip_id = null). 0 = live budget (trip_id required).
   created_at      TEXT    NOT NULL,
@@ -247,7 +285,8 @@ CREATE TABLE budget_line_items (
   budgeted    INTEGER,                       -- whole US cents; nullable until entered
   actual      INTEGER,                       -- whole US cents; nullable until entered
   -- difference (actual - budgeted) is always computed at the application layer.
-  -- Under/Over/Close indicator is also computed, never stored.
+  -- The variance status (Under / Close / Over / WayOver) is also computed, never
+  -- stored — the thresholds are global settings and can change at any time.
   notes       TEXT,
     -- Plain text. A short per-line annotation, not a rich text field —
     -- the budget's own notes column is the rich text field for a budget.
@@ -552,10 +591,18 @@ CREATE INDEX idx_trip_blocks_region   ON trip_blocks (region_id);
 CREATE INDEX idx_trip_blocks_city     ON trip_blocks (city_id);
 CREATE INDEX idx_trip_day_pois_poi    ON trip_day_pois (poi_id);
 
--- Status filtering (master library views)
-CREATE INDEX idx_countries_status     ON countries (status);
+-- Status filtering (Trips list, global search trip-status filter)
 CREATE INDEX idx_trips_status         ON trips (status);
 CREATE INDEX idx_trips_completed_at   ON trips (completed_at);
+
+-- Pinned items (FR14): "pinned first, in hand-set order" on the Countries and
+-- Trips lists and in the side navigation. Unique, so two items cannot share a
+-- place in the pinned order. Reordering renumbers through a temporary offset in
+-- one transaction, like trip_days.day_number.
+CREATE UNIQUE INDEX idx_countries_pin ON countries (pin_position) WHERE pin_position IS NOT NULL;
+CREATE UNIQUE INDEX idx_trips_pin     ON trips (pin_position)     WHERE pin_position IS NOT NULL;
+  -- "Newest first" after the pinned group needs no index: both lists are loaded
+  -- whole (hundreds of rows at most) and sorted on created_at in memory.
 ```
 
 ---
@@ -581,7 +628,7 @@ Every FK column and what happens to the row when the referenced record is delete
 | Country           | `regions.country_id`              | CASCADE   | Region deleted                                                         |
 | Country           | `cities.country_id`               | CASCADE   | City deleted                                                           |
 | Country           | `pois.country_id`                 | CASCADE   | POI deleted                                                            |
-| Country           | `trip_blocks.country_id`          | RESTRICT  | Delete refused while any block uses the country                        |
+| Country           | `trip_blocks.country_id`          | RESTRICT  | Delete refused while any location block uses the country               |
 | Country           | `trip_countries.country_id`       | CASCADE   | Trip–country link removed (only links with no block can exist here)    |
 | Country           | `tips.country_id`                 | SET NULL  | Tip becomes Unlinked                                                   |
 | Country           | `content_tags.country_id`         | CASCADE   | Tag assignment removed                                                 |
@@ -671,7 +718,9 @@ without a snapshot.
 **Rules enforced by the schema** (CHECK constraints and partial unique indexes, declared
 above — the database rejects a violation whatever the application does):
 
-- `countries`, `trips`: `status` is one of the allowed values. `tips`: `type` and `scope` likewise
+- `trips`: `status` is one of the allowed values. `tips`: `type` and `scope` likewise
+- `countries`, `trips`: `pin_position` is null or ≥ 1, and unique among pinned rows
+- `trip_blocks`: `kind` is location or travel; a location block has a country and no travel fields; a travel block has a `travel_mode` and no country, region or city; `duration_days` is ≥ 1 on a location block and ≥ 0 on a travel block
 - `content_tags`, `media`: exactly one parent FK column set per row
 - `media`: at most one hero image per parent; a snapshot-owned row is never a hero
 - `budgets`: `trip_id` is null exactly when `is_template = 1`; a template is never primary; at most one primary budget per trip; template names unique among templates
@@ -693,8 +742,10 @@ row was before the write, which a CHECK cannot see):
 - `budgets`: a trip with one or more budgets has at least one primary (the index guarantees at most one)
 - `budget_line_items`: `budgeted` and `actual` are whole cents
 - `trip_days`: `trip_id` must match `block_id → trip_blocks.trip_id` (denormalization consistency)
-- `trip_days`: within an expanded block, `day_number` runs 1..n with no gaps and n equals the block's `duration_days`
-- `trip_countries`: contains every country used by one of the trip's blocks
+- `trip_days`: within a block that has days, `day_number` runs 1..n with no gaps and n equals the block's `duration_days`
+- `trip_days`: only a location block can have days — never a travel block
+- `trip_countries`: contains every country used by one of the trip's location blocks
+- `countries`, `trips`: pinned positions run 1..n with no gaps; unpinning or deleting a pinned row closes the gap
 - `trips`: `completed_at` is changed only while `status = Completed`
 - `trip_snapshots`: rows are written once, at deletion of a Completed trip, and never updated
 
@@ -757,6 +808,31 @@ level, so no itinerary loses days because library content was tidied up.
 **`completed_at` on `trips` only.** Countries, regions, and cities have no completion
 lifecycle. `completed_at` is absent from those tables entirely.
 
+**Trips are the only content with a status.** Countries lost theirs (D-09): what a
+country holds already shows how far the research has gone, and a second manual status
+was one more thing to keep up to date. Regions and cities never had one.
+
+**Travel blocks share `trip_blocks` with location blocks.** The itinerary is one ordered
+list, and `position`, reordering, trip length and cost per day all run over both kinds.
+A separate `trip_travel_legs` table was rejected: it would need its own position
+sequence interleaved with blocks, and every itinerary read would merge two lists. The
+cost is a handful of nullable columns, kept honest by the CHECKs on `kind`.
+
+**Pinning is one nullable column.** `pin_position` is both the flag and the order. A
+separate `is_pinned` flag plus position would allow a pinned row with no position, or a
+position on an unpinned row; one column cannot express either.
+
+**Expanded/collapsed is not stored.** The trip builder's open-or-collapsed state is a
+viewing preference and is remembered with the rest of the UI state, outside the
+database. The database records only whether a block has days. Collapsing a block
+therefore changes nothing here, which is how its days and their content survive
+(US-013). Presentation mode shows every day that exists, whatever the builder view.
+
+**Variance thresholds are settings, not data.** The Close and Way over percentages are
+global (D-18) and decide only how a difference is coloured. Keeping them out of the
+database means restoring an older library never changes them, and nothing in a
+budget row has to be rewritten when they change.
+
 **FTS5 write-through sync.** Every write that changes a record's indexed text updates
 the index synchronously in the same transaction. Search is always current — no
 background jobs, no eventual consistency, no stale results.
@@ -772,6 +848,44 @@ record's edit can invalidate.
 as `UNINDEXED` in the FTS table would stop them being matched as text, but deleting or
 replacing a record's entry would still scan the whole FTS table on every write. A
 regular mapping table gives an indexed lookup and a rowid delete.
+
+## Planned Schema Changes
+
+Decided but not part of the P0 schema. Each lands as an ordinary migration when its
+story is scheduled.
+
+**P1 — Split budgets (US-064, FR16).** A budget gains a payment mode and a
+list of travelers with shares:
+
+```sql
+ALTER TABLE budgets ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'shared'
+  CHECK (payment_mode IN ('shared', 'split'));
+
+CREATE TABLE budget_travelers (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  budget_id   TEXT    NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+  name        TEXT    NOT NULL,
+  share_bp    INTEGER NOT NULL CHECK (share_bp BETWEEN 1 AND 10000),
+    -- share in basis points (7000 = 70%), so shares add up exactly to 10000
+  position    INTEGER NOT NULL,
+  created_at  TEXT    NOT NULL,
+  updated_at  TEXT    NOT NULL,
+  UNIQUE (budget_id, name)
+);
+CREATE INDEX idx_budget_travelers_budget ON budget_travelers (budget_id, position);
+  -- Serves: "a budget's travelers in order" for the budget screen and presentation
+```
+
+Application rules when built: a budget in `split` mode has travelers whose shares sum to
+10000; switching back to `shared` keeps the traveler rows (US-064) and stops showing
+per-person figures; templates are always `shared` and have no travelers. Cost per
+person is computed per traveler as `total × share_bp ÷ 10000`, rounded to the cent.
+There was never a released `num_travelers` column, so nothing is migrated away.
+
+**P2 — Budget category colours (FR19, D-25).** `budget_categories` gains
+`color TEXT` holding a swatch key from the design system's curated per-palette set
+(e.g. `cat-3`), never a raw colour value, so a palette change recolours every budget.
+Null means the default colour by position. Templates carry the key.
 
 **P2 — Full data export (NFR5).** JSON export of the full library preserving content
 relationships is planned as a P2 enhancement. When built, export will be handled in the

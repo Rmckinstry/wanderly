@@ -32,6 +32,12 @@ e.g. `content:country:create`, `trip:block:expand`, `search:global:query`
   call returns a confirmation-required error and changes nothing; the renderer shows
   the preview, and on acceptance repeats the call with `confirm: true`. A call that
   needs no confirmation succeeds the first time.
+- **Events (main → renderer).** A few long operations report progress. The main
+  process sends them with `webContents.send` on a channel named
+  `<module>:<resource>:<event>`, and the preload script exposes a typed `on(channel,
+  listener)` that returns an unsubscribe function. Events carry data only; they never
+  replace the operation's own result. Each is listed under the operation that emits it
+  as `Emits:`.
 
 **Authentication:** None — single-user local app. Omitted from all endpoints.
 
@@ -70,6 +76,8 @@ fields store and return TipTap JSON strings unless explicitly noted otherwise.
 - `FILE_PROCESSING_ERROR` — image could not be read or processed
 - `BACKUP_FOLDER_UNAVAILABLE` — no backup folder configured, or it cannot be reached
 - `INVALID_BACKUP` — restore point is damaged or was made by a newer app version
+- `RESTORE_CANCELLED` — the user cancelled a restore before anything was replaced
+- `RESTORE_NOT_CANCELLABLE` — no restore is running, or it has reached the database swap
 - `INTERNAL_ERROR` — unexpected failure; details are in the log file, not the response
 
 **Confirmation-required codes** (returned when `confirm` is absent; repeat the call
@@ -95,27 +103,35 @@ with `confirm: true` to proceed):
 ```
 GET /api/countries
 Channel: content:country:list
-Query params:  status  string?  -- Wishlist | Researching | Sampling | Planning
-                                 -- repeatable: status=x&status=y; OR-ed (US-027)
+Query params:  none — countries have no status to filter by (D-09); tag filtering
+               on this list goes through GET /api/search (filter-only browsing)
 Response 200:
   {
     countries: [
       {
-        id:         string,
-        name:       string,
-        status:     string,
-        created_at: string,
-        updated_at: string,
+        id:           string,
+        name:         string,
+        pin_position: number | null,   -- null = not pinned
+        created_at:   string,
+        updated_at:   string,
         counts: {
           regions: number,
           cities:  number,
           pois:    number,
           trips:   number
-        }
+        },
+        tags:          [{ id: string, category: string, value: string }],
+        hero_thumbnail_url: string | null
+          -- the country's designated hero, else its first photo by position;
+          -- null = Grid view shows the initial on a neutral block (D-24)
       }
     ]
   }
 Side effects: none
+  -- Order: pinned countries first by pin_position, then the rest newest first
+     (created_at descending) — the side navigation's order (FR14). The Countries
+     page's other sorts (Name A–Z, Most POIs) are applied by the renderer to this
+     list; every country is returned, so no paging is needed
 ```
 
 ```
@@ -123,10 +139,10 @@ GET /api/countries/:id
 Channel: content:country:get
 Response 200:
   {
-    id:         string,
-    name:       string,
-    status:     string,
-    notes:      string | null,   -- TipTap JSON
+    id:           string,
+    name:         string,
+    pin_position: number | null,
+    notes:        string | null,   -- TipTap JSON
     created_at: string,
     updated_at: string,
     counts: {
@@ -148,17 +164,16 @@ Channel: content:country:create
 Request body:
   {
     name:   string  required  -- non-empty, unique across all countries
-    status: string?           -- default: Wishlist
     notes:  string?           -- TipTap JSON
   }
 Response 201:
   {
-    id:         string,
-    name:       string,
-    status:     string,
-    notes:      string | null,
-    created_at: string,
-    updated_at: string
+    id:           string,
+    name:         string,
+    pin_position: null,
+    notes:        string | null,
+    created_at:   string,
+    updated_at:   string
   }
 Response 400: name is empty
   { error: { code: "VALIDATION_ERROR", message: "Name is required" } }
@@ -173,9 +188,9 @@ Channel: content:country:update
 Request body: (all fields optional — only provided fields updated)
   {
     name:   string?
-    status: string?  -- Wishlist | Researching | Sampling | Planning
     notes:  string?  -- TipTap JSON
   }
+  -- Pinning is changed only through PUT /api/countries/:id/pin
 Response 200: same shape as GET /api/countries/:id
 Response 400: name is empty string
   { error: { code: "VALIDATION_ERROR", message: "Name cannot be empty" } }
@@ -244,6 +259,31 @@ Side effects:
   -- trip_countries links for this country removed
   -- trip_day_pois rows for the deleted POIs removed
   -- search_index entries for all deleted records removed synchronously
+  -- If the country was pinned, the pinned positions after it close up
+```
+
+```
+PUT /api/countries/:id/pin
+Channel: content:country:pin
+  -- Pins, unpins or moves a country within the pinned order (FR14, US-025):
+  -- "Pin to sidebar" / "Unpin" in More ▾, drag in the Pinned group, Alt+Up/Down.
+Request body:
+  {
+    pinned:   boolean  required
+    position: number?  -- 1-based place in the pinned order; only with pinned: true.
+                       -- Omitted when pinning = last. Larger than the pinned count = last
+  }
+Response 200:
+  {
+    pinned: [{ id: string, name: string, pin_position: number }]  -- the whole pinned order
+  }
+Response 400: position given with pinned: false, or not a positive integer
+  { error: { code: "VALIDATION_ERROR", message: "position must be a positive integer and needs pinned: true" } }
+Response 404: { error: { code: "NOT_FOUND", message: "Country not found" } }
+Side effects:
+  -- Other pinned countries renumbered so positions stay 1..n with no gaps
+  -- Pinning an already-pinned country with a position moves it; without one, no change
+  -- Unpinning an unpinned country is a no-op that returns the current order
 ```
 
 ---
@@ -757,6 +797,27 @@ Side effects: none
 
 **IPC prefix:** `trip`
 
+**Key behaviours:**
+
+- **Two kinds of block** (D-27). A `location` block is a stay at a country, region or
+  city and can be expanded into days. A `travel` block is a flight, train, bus, ferry
+  or drive with free-text `from_label` / `to_label`; it has no place, no days and no
+  POIs, and never creates budget lines. `kind` is fixed when the block is created
+- **Trip length** = the sum of every block's `duration_days`, location and travel.
+  `length.complete` is false when any block has no duration; `length.days` is then the
+  sum of the durations that are set (the renderer shows "12+ days"). A trip with no
+  blocks has length `{ days: 0, complete: false }`
+- **Day numbering** is derived, never stored. Walking the blocks in order, each block
+  covers the next `duration_days` days. A 0-day travel block in position 1 is **Day 0**
+  and adds nothing to the length; a 0-day travel block elsewhere sits between two days
+  ("Day 2→3"). After a block with no duration, later blocks have no known day numbers
+  and the renderer shows their length instead ("4 days"). `trip_days.day_number` is the
+  day's number within its own block
+- **Days and collapsing.** A block either has days (`has_days`) or not. Days are created
+  by expanding a block and stay until the block is deleted, its duration is lowered, or
+  the day is deleted. Showing a block open or collapsed in the trip builder is UI state
+  (Module 10), not a call to this module: collapsing never removes days (US-013)
+
 ---
 
 ### Trips
@@ -766,24 +827,34 @@ GET /api/trips
 Channel: trip:trip:list
 Query params:
   status     string?  -- Sample | Planning | Ready | Completed
-                      -- repeatable: status=x&status=y; OR-ed (US-027)
-  country_id string?  -- filter to trips referencing this country
+                      -- repeatable: status=x&status=y; OR-ed. The Trips list sends one
+                      -- (single-select, US-027); repeating it stays valid
+  country_id string?  -- repeatable; trips referencing any of these countries
+  tag_id     string?  -- repeatable; trips carrying all of these tags
+                      -- Different filters combine with AND
 Response 200:
   {
     trips: [
       {
-        id:           string,
-        name:         string,
-        status:       string,
-        completed_at: string | null,
-        created_at:   string,
-        updated_at:   string,
-        countries:    [{ id: string, name: string }],
-        counts: { blocks: number, days: number }
+        id:              string,
+        name:            string,
+        status:          string,
+        completed_at:    string | null,
+        pin_position:    number | null,
+        created_at:      string,
+        updated_at:      string,
+        countries:       [{ id: string, name: string }],
+        counts:          { blocks: number, days: number, windows: number },
+        length:          { days: number, complete: boolean },
+          -- see Trip length in Key behaviours; complete = false shows "12+ days"
+        estimate:        number | null,  -- primary budget's total_budgeted, in cents
+        hero_thumbnail_url: string | null  -- hero rule in Module 8 Key behaviours
       }
     ]
   }
 Side effects: none
+  -- Order: pinned trips first by pin_position, then newest first (FR14). Other sorts
+     on the Trips page are applied by the renderer to this list
 ```
 
 ```
@@ -795,13 +866,20 @@ Response 200:
     name:         string,
     status:       string,
     completed_at: string | null,
+    pin_position: number | null,
     notes:        string | null,  -- TipTap JSON
     created_at:   string,
     updated_at:   string,
     countries:    [{ id: string, name: string }],
     tags:         [{ id: string, category: string, value: string }],
     media:        [{ id: string, app_url: string, thumbnail_url: string, is_hero: boolean, position: number }],
-    counts: { blocks: number, days: number, budgets: number }
+    counts: {
+      blocks:        number,   -- location and travel
+      travel_blocks: number,
+      days:          number,
+      budgets:       number
+    },
+    length: { days: number, complete: boolean }   -- see Trip length in Key behaviours
   }
 Response 404: { error: { code: "NOT_FOUND", message: "Trip not found" } }
 Side effects: none
@@ -822,6 +900,9 @@ Response 400: name is empty
 Response 404: any country_id in country_ids not found
   { error: { code: "NOT_FOUND", message: "Country '{id}' not found" } }
 Side effects: trip_countries rows created; search_index updated synchronously
+  -- "Start a trip" from a country (D-29) is this call with
+     { name: "<Country> trip", country_ids: [<country id>] }: the trip links only that
+     country and has no blocks. No block is created for it
 ```
 
 ```
@@ -918,6 +999,18 @@ Side effects:
   -- All blocks, days, day_poi_refs, budgets, trip_countries links and tag
      assignments hard deleted; media hard deleted unless re-parented to a snapshot
   -- search_index entries for the trip and its budgets removed synchronously
+  -- If the trip was pinned, the pinned positions after it close up
+```
+
+```
+PUT /api/trips/:id/pin
+Channel: trip:trip:pin
+  -- Same contract as PUT /api/countries/:id/pin, for trips (FR14, US-005).
+Request body:  { pinned: boolean  required, position: number? }
+Response 200:  { pinned: [{ id: string, name: string, pin_position: number }] }
+Response 400:  { error: { code: "VALIDATION_ERROR", message: "position must be a positive integer and needs pinned: true" } }
+Response 404:  { error: { code: "NOT_FOUND", message: "Trip not found" } }
+Side effects:  other pinned trips renumbered so positions stay 1..n with no gaps
 ```
 
 ---
@@ -967,15 +1060,19 @@ Response 200:
         id:            string,
         trip_id:       string,
         position:      number,
-        country_id:    string,
-        country_name:  string,
+        kind:          string,         -- location | travel
+        country_id:    string | null,  -- null on a travel block
+        country_name:  string | null,
         region_id:     string | null,
         region_name:   string | null,
         city_id:       string | null,
         city_name:     string | null,
+        travel_mode:   string | null,  -- flight | train | bus | ferry | drive; travel only
+        from_label:    string | null,  -- travel only
+        to_label:      string | null,  -- travel only
         duration_days: number | null,
         notes:         string | null,  -- TipTap JSON
-        days_expanded: boolean,
+        has_days:      boolean,        -- true once the block has been expanded into days
         created_at:    string,
         updated_at:    string
       }
@@ -990,10 +1087,17 @@ POST /api/trips/:trip_id/blocks
 Channel: trip:block:create
 Request body:
   {
-    country_id:    string   required
+    kind:          string?  -- location | travel; default: location
+    -- location block:
+    country_id:    string   required for a location block; not allowed on a travel block
     region_id:     string?
     city_id:       string?
-    duration_days: number?  -- positive integer
+    -- travel block:
+    travel_mode:   string?  -- flight | train | bus | ferry | drive; default: flight
+    from_label:    string?  -- free text
+    to_label:      string?  -- free text
+    -- either kind:
+    duration_days: number?  -- whole days: ≥ 1 on a location block, ≥ 0 on a travel block
     notes:         string?  -- TipTap JSON
     position:      number?  -- if omitted, appended to end
   }
@@ -1002,27 +1106,37 @@ Response 201:
     id:            string,
     trip_id:       string,
     position:      number,
-    country_id:    string,
-    country_name:  string,
+    kind:          string,
+    country_id:    string | null,
+    country_name:  string | null,
     region_id:     string | null,
     region_name:   string | null,
     city_id:       string | null,
     city_name:     string | null,
+    travel_mode:   string | null,
+    from_label:    string | null,
+    to_label:      string | null,
     duration_days: number | null,
     notes:         string | null,  -- TipTap JSON
-    days_expanded: false,
+    has_days:      false,
     created_at:    string,
     updated_at:    string
   }
-Response 400: country_id missing, or duration_days not a positive integer
-  { error: { code: "VALIDATION_ERROR", message: "country_id is required" } }
+Response 400: location block without country_id
+  { error: { code: "VALIDATION_ERROR", message: "country_id is required for a location block" } }
+Response 400: travel block with a country, region or city; or an unknown kind or travel_mode
+  { error: { code: "VALIDATION_ERROR", message: "Travel blocks don't take a place" } }
+Response 400: duration_days not a whole number, below 1 on a location block, or below 0
+  on a travel block
+  { error: { code: "VALIDATION_ERROR", message: "duration_days must be a whole number of days" } }
 Response 404: trip, country, region, or city not found
   { error: { code: "NOT_FOUND", message: "Country not found" } }
 Response 409: region or city does not belong to specified country
   { error: { code: "HIERARCHY_MISMATCH", message: "Region or city does not belong to the specified country" } }
 Side effects:
   -- Sibling block positions incremented if inserted mid-sequence
-  -- Country added to trip_countries if not already linked
+  -- Location block: its country added to trip_countries if not already linked.
+     A travel block adds no link, so it can be added to a trip with no countries
 ```
 
 ```
@@ -1030,18 +1144,28 @@ PATCH /api/trips/blocks/:id
 Channel: trip:block:update
 Request body:
   {
+    -- location block only ("Change place…", US-012):
     country_id:    string?
     region_id:     string?  -- pass null to detach
     city_id:       string?  -- pass null to detach
-    duration_days: number?  -- pass null to clear (not allowed on an expanded block);
-                            -- on an expanded block, raising it appends empty days and
+    -- travel block only:
+    travel_mode:   string?
+    from_label:    string?  -- pass null to clear
+    to_label:      string?  -- pass null to clear
+    -- either kind:
+    duration_days: number?  -- pass null to clear (not allowed on a block with days);
+                            -- on a block with days, raising it appends empty days and
                             -- lowering it removes days from the end (confirm required)
     notes:         string?  -- TipTap JSON
     position:      number?
   }
+  -- kind cannot be changed; delete the block and add one of the other kind
 Response 200: same shape as POST /api/trips/:trip_id/blocks response
-Response 400: duration_days not a positive integer, or null on an expanded block
-  { error: { code: "VALIDATION_ERROR", message: "duration_days must be a positive integer" } }
+Response 400: duration_days not a whole number, below the minimum for the block's kind,
+  or null on a block with days
+  { error: { code: "VALIDATION_ERROR", message: "duration_days must be a whole number of days" } }
+Response 400: place fields sent for a travel block, or travel fields for a location block
+  { error: { code: "VALIDATION_ERROR", message: "That field does not apply to this kind of block" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Block not found" } }
 Response 409: hierarchy mismatch
   { error: { code: "HIERARCHY_MISMATCH", message: "Region or city does not belong to the specified country" } }
@@ -1056,9 +1180,14 @@ Response 409: duration_days reduced below existing expanded day count
 Side effects:
   -- Sibling positions recompacted if position changed
   -- Duration conflict requires separate confirm call
-  -- Expanded block: an expanded block always has exactly duration_days days.
+  -- Block with days: it always has exactly duration_days days.
      Raising duration_days appends empty days numbered after the existing ones
-  -- If country_id changes, the new country is added to trip_countries if not linked
+  -- Changing the place (country_id / region_id / city_id) never touches the block's
+     days, duration or notes (US-012). The trip builder's "Change place…" offers the
+     block's own country first, then other countries (D-49); any choice keeps the days
+  -- If country_id changes, the new country is added to trip_countries if not linked.
+     The old country stays linked (D-49) — links are never removed automatically, the
+     same as on block delete; the user removes the chip with trip:country:remove
 ```
 
 ```
@@ -1091,6 +1220,8 @@ Side effects:
 ```
 POST /api/trips/blocks/:id/expand
 Channel: trip:block:expand
+  -- Creates the days of a location block that has none ("Expand to days").
+  -- Opening a block that already has days is UI state only — no call.
 Request body:  { duration_days: number  required }
 Response 200:
   {
@@ -1111,40 +1242,45 @@ Response 200:
   }
 Response 400: duration_days missing or not a positive integer
   { error: { code: "VALIDATION_ERROR", message: "duration_days is required and must be a positive integer" } }
+Response 400: the block is a travel block
+  { error: { code: "VALIDATION_ERROR", message: "Travel blocks don't expand into days" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Block not found" } }
-Response 409: block already has expanded days
-  { error: { code: "ALREADY_EXPANDED", message: "Block already has expanded days", existing_day_count: number } }
+Response 409: block already has days
+  { error: { code: "ALREADY_EXPANDED", message: "Block already has days", existing_day_count: number } }
 Side effects: trip_days rows created; block duration_days updated to match
 ```
 
 ```
-POST /api/trips/blocks/:id/collapse
-Channel: trip:block:collapse
-  -- Returns an expanded block to location-block mode by removing its days.
+POST /api/trips/:trip_id/blocks/expand-all
+Channel: trip:block:expand-all
+  -- "Expand all" (D-44, ⌥⌘↓): creates days for every location block that has a
+  -- duration and no days yet, in one transaction (one undo step).
 Request body:  none
-Response 409: one or more days have content — confirm required
+Response 200:
   {
-    error: {
-      code: "DELETE_REQUIRES_CONFIRMATION",
-      message: "Collapsing this block will delete its days and what is on them",
-      days_with_content: number,   -- days that have POIs, notes or a date
-      day_poi_refs:      number
+    trip_id: string,
+    expanded: [{ block_id: string, days_created: number }],  -- blocks that gained days
+    skipped:  {
+      no_duration: number,  -- location blocks without a duration (stay as they are)
+      travel:      number,  -- travel blocks never have days
+      had_days:    number   -- already had days; nothing created
     }
   }
-Response 200: (all days empty, or confirm: true)
-  same shape as POST /api/trips/:trip_id/blocks response, with days_expanded: false
-Response 400: block is not expanded
-  { error: { code: "VALIDATION_ERROR", message: "Block has no days to collapse" } }
-Response 404: { error: { code: "NOT_FOUND", message: "Block not found" } }
-Side effects:
-  -- All trip_days and trip_day_pois for the block hard deleted
-  -- duration_days is kept
+Response 404: { error: { code: "NOT_FOUND", message: "Trip not found" } }
+Side effects: trip_days rows created for each block in `expanded`
+  -- Which blocks the builder then shows open is UI state; the renderer opens every
+     block with days after this call
 ```
+
+**Collapsing a block has no channel.** "Collapse to block", "Collapse all" and Enter on
+an open block only change which blocks the trip builder shows open — UI state, stored per
+trip by Module 10. The block's days, notes and POIs are untouched and reappear when the
+block is opened again (US-013; D-48). Collapsing shows no warning, since nothing is lost.
 
 ```
 POST /api/trips/blocks/:id/split
 Channel: trip:block:split
-  -- Splits an expanded block in two, so a broad block's days can be reorganized into
+  -- Splits a location block that has days in two, so a broad block's days can be reorganized into
   -- more specific blocks (US-013): a 7-day Thailand block becomes a 3-day Bangkok
   -- block and a 4-day Chiang Mai block.
 Request body:
@@ -1157,7 +1293,7 @@ Request body:
   }
 Response 200:
   { blocks: [ <original block>, <new block> ] }   -- each: same shape as the block create response
-Response 400: block is not expanded, or first_day_number is out of range
+Response 400: block has no days (or is a travel block), or first_day_number is out of range
   { error: { code: "VALIDATION_ERROR", message: "first_day_number must be between 2 and the block's day count" } }
 Response 404: block, country, region, or city not found
   { error: { code: "NOT_FOUND", message: "Block not found" } }
@@ -1217,7 +1353,7 @@ Side effects: none
 ```
 POST /api/trips/blocks/:block_id/days
 Channel: trip:day:create
-  -- Inserts one empty day into an expanded block.
+  -- Inserts one empty day into a block that has days.
 Request body:
   {
     day_number: number?  -- position to insert at; default: after the last day
@@ -1225,7 +1361,7 @@ Request body:
     notes:      string?  -- TipTap JSON
   }
 Response 201: same shape as GET /api/trips/days/:id
-Response 400: block is not expanded, or day_number is out of range
+Response 400: block has no days (or is a travel block), or day_number is out of range
   { error: { code: "VALIDATION_ERROR", message: "Expand the block before adding days" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Block not found" } }
 Side effects:
@@ -1241,13 +1377,13 @@ Request body:
     date:       string?  -- ISO date string; pass null to clear
     notes:      string?  -- TipTap JSON
     day_number: number?  -- move the day to this position within its block
-    block_id:   string?  -- move the day to another expanded block of the same trip;
+    block_id:   string?  -- move the day to another block with days in the same trip;
                          -- lands at day_number, or at the end if day_number is omitted
   }
 Response 200: same shape as GET /api/trips/days/:id
 Response 400: date is not a valid ISO date string, or day_number is out of range
   { error: { code: "VALIDATION_ERROR", message: "date must be a valid ISO date string" } }
-Response 400: block_id is in another trip, is not expanded, or the day is its block's only day
+Response 400: block_id is in another trip, has no days, or the day is its block's only day
   { error: { code: "VALIDATION_ERROR", message: "This day cannot be moved to that block" } }
 Response 404: day or target block not found
   { error: { code: "NOT_FOUND", message: "Day not found" } }
@@ -1255,7 +1391,7 @@ Side effects:
   -- Reorder: the other days in the block are renumbered so numbers stay 1..n
   -- Move: both blocks renumbered; source duration_days decremented, target incremented
   -- A day keeps its POIs, notes and date when it is reordered or moved
-  -- A block's only day cannot be moved out — collapse or delete the block instead
+  -- A block's only day cannot be moved out — delete the block instead
 ```
 
 ```
@@ -1273,7 +1409,7 @@ Response 409: day has content — confirm required
 Response 200: (empty day, or confirm: true)
   { deleted_id: string, block_id: string, cascade_summary: { day_poi_refs_deleted: number } }
 Response 400: the day is its block's only day
-  { error: { code: "VALIDATION_ERROR", message: "Collapse or delete the block to remove its last day" } }
+  { error: { code: "VALIDATION_ERROR", message: "Delete the block to remove its last day" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Day not found" } }
 Side effects:
   -- Day and its trip_day_pois hard deleted; later days renumbered down by one
@@ -1347,19 +1483,26 @@ Side effects:
 - Templates are not indexed
 - **Money.** Every amount in requests and responses is an integer number of US cents
   (`1250` = $12.50). A fractional or negative amount is a `VALIDATION_ERROR`.
-  `cost_per_person` and `cost_per_day` are rounded to the nearest cent
+  `cost_per_day` is rounded to the nearest cent
+- **Thresholds** are two global settings read from Module 10 (D-18): `close` (default
+  0.10) and `way_over` (default 0.25, always greater than `close`). They are not stored
+  on budgets. A change recolours every budget on its next read; nothing is rewritten
 - **Variance status** for a line item — first matching rule wins:
 
-  | # | Condition                                              | Status  |
-  | - | ------------------------------------------------------ | ------- |
-  | 1 | `budgeted` is null or `actual` is null                 | null    |
-  | 2 | `budgeted` = 0 and `actual` = 0                        | Close   |
-  | 3 | `budgeted` = 0 and `actual` > 0                        | Over    |
-  | 4 | \|`actual` − `budgeted`\| ≤ `close_threshold` × `budgeted` | Close   |
-  | 5 | `actual` < `budgeted`                                  | Under   |
-  | 6 | otherwise                                              | Over    |
+  | # | Condition                                                   | Status  |
+  | - | ----------------------------------------------------------- | ------- |
+  | 1 | `budgeted` is null or `actual` is null                      | null    |
+  | 2 | `budgeted` = 0 and `actual` = 0                             | Close   |
+  | 3 | `budgeted` = 0 and `actual` > 0                             | WayOver |
+  | 4 | \|`actual` − `budgeted`\| ≤ `close` × `budgeted`            | Close   |
+  | 5 | `actual` < `budgeted`                                       | Under   |
+  | 6 | `actual` − `budgeted` > `way_over` × `budgeted`             | WayOver |
+  | 7 | otherwise                                                   | Over    |
 
-  Close therefore takes precedence over Under and Over, and an exact match is Close
+  Close therefore takes precedence over Under and Over, and an exact match is Close.
+  `variance_status` is one of `Under | Close | Over | WayOver | null` everywhere it
+  appears. The renderer draws it on the Difference value (glyph + word + colour); there
+  is no status column
 - **Category subtotals and the budget snapshot:**
   - `budgeted` / `total_budgeted` = sum of the line items' budgeted amounts; null if none has one.
     `actual` / `total_actual` likewise
@@ -1367,13 +1510,15 @@ Side effects:
     computed only over line items that have **both** amounts, using the table above on
     those two sums. Null if no line item has both
   - `actuals_complete` is true when every line item with a budgeted amount also has an
-    actual. While it is false, the difference and status cover only part of the budget
-    and the renderer labels them as partial
-- **Cost per person** = `total_budgeted` ÷ `num_travelers`; null if either is missing
-- **Cost per day** = `total_budgeted` ÷ the trip's total days, where total days is the sum
-  of its blocks' `duration_days`. Null unless the trip has at least one block and
-  **every** block has a duration — a partly-planned trip shows "incomplete", never a
-  figure based on some of its days
+    actual. While it is false, the difference and status cover only the lines that have
+    both amounts; pending lines show as Pending and no "partial" label is added (D-20)
+- **Cost per person** is not part of this version: budgets are shared (one pot, D-28).
+  It returns with split budgets (US-064, P1; see Planned Schema Changes in `data-model.md`)
+- **Cost per day** = `total_budgeted` ÷ the trip's length (sum of every block's
+  `duration_days`, location and travel — see Module 2). Null unless the trip has at least
+  one block, **every** block has a duration, and the length is above 0 — a
+  partly-planned trip shows "Needs every stop's length", never a figure based on some
+  of its days
 - **Primary budget.** A trip with budgets has exactly one primary budget. Presentation
   mode and the comparison view show the primary; the trip record lists all of them
 
@@ -1394,8 +1539,6 @@ Response 200:
         id:              string,
         name:            string,
         trip_id:         string | null,
-        num_travelers:   number | null,
-        close_threshold: number,
         is_template:     boolean,
         is_primary:      boolean,        -- always false for templates
         notes:           string | null,  -- TipTap JSON
@@ -1406,9 +1549,8 @@ Response 200:
           total_actual:     number | null,
           total_difference: number | null,
           actuals_complete: boolean,
-          cost_per_person:  number | null,
           cost_per_day:     number | null,
-          variance_status:  string | null   -- Under | Over | Close
+          variance_status:  string | null   -- Under | Close | Over | WayOver
         }
       }
     ]
@@ -1424,8 +1566,6 @@ Response 200:
     id:              string,
     name:            string,
     trip_id:         string | null,
-    num_travelers:   number | null,
-    close_threshold: number,
     is_template:     boolean,
     is_primary:      boolean,        -- always false for templates
     notes:           string | null,  -- TipTap JSON
@@ -1436,7 +1576,6 @@ Response 200:
       total_actual:     number | null,
       total_difference: number | null,
       actuals_complete: boolean,
-      cost_per_person:  number | null,  -- null if num_travelers not set
       cost_per_day:     number | null,  -- null unless every block on the trip has a duration
       variance_status:  string | null
     },
@@ -1460,7 +1599,7 @@ Response 200:
             budgeted:        number | null,
             actual:          number | null,
             difference:      number | null,  -- computed: actual - budgeted
-            variance_status: string | null,  -- Under | Over | Close | null if no actual
+            variance_status: string | null,  -- Under | Close | Over | WayOver | null if no actual
             notes:           string | null,
             created_at:      string,
             updated_at:      string
@@ -1472,8 +1611,8 @@ Response 200:
 Response 404: { error: { code: "NOT_FOUND", message: "Budget not found" } }
 Side effects: none
   -- difference and variance_status always computed at application layer, never stored.
-  -- Rules for variance_status, subtotals, the snapshot, cost_per_person and
-     cost_per_day are in Key behaviours at the top of this module.
+  -- Rules for variance_status, subtotals, the snapshot and cost_per_day are in
+     Key behaviours at the top of this module.
 ```
 
 ```
@@ -1481,27 +1620,27 @@ POST /api/budgets
 Channel: budget:budget:create
 Request body:
   {
-    name:            string   required  -- unique within same trip
+    name:            string   required  -- unique within same trip; templates: unique among templates
     trip_id:         string   required  -- unless is_template = true
-    num_travelers:   number?            -- positive integer
-    close_threshold: number?            -- default: 0.10
     notes:           string?            -- TipTap JSON
     is_template:     boolean?           -- default: false
-    template_id:     string?            -- copies category structure from this template
+    template_id:     string?            -- copies category and line item names from this template
   }
+  -- New template in Settings › Budget: "Blank" = is_template: true;
+     "Copy of a template" = is_template: true + template_id;
+     "An existing budget" = POST /api/budgets/:id/save-as-template
 Response 201: same shape as GET /api/budgets/:id (categories empty unless template applied)
 Response 400: trip_id missing for non-template budget
   { error: { code: "VALIDATION_ERROR", message: "trip_id is required for non-template budgets" } }
 Response 400: trip_id provided for template budget
   { error: { code: "VALIDATION_ERROR", message: "Template budgets cannot be attached to a trip" } }
-Response 400: num_travelers not a positive integer
-  { error: { code: "VALIDATION_ERROR", message: "num_travelers must be a positive integer" } }
 Response 404: trip_id or template_id not found
   { error: { code: "NOT_FOUND", message: "Trip not found" } }
-Response 409: budget name already exists on this trip
+Response 409: budget name already exists on this trip, or template name already taken
   { error: { code: "DUPLICATE_NAME", message: "A budget named '{name}' already exists on this trip" } }
 Side effects:
-  -- If template_id provided: category and line item structure copied; all cost fields null
+  -- If template_id provided: category names and line item names copied; all cost fields
+     null. The new budget is an independent copy — later template edits never reach it
   -- The first budget created on a trip becomes its primary budget
   -- Non-template budget: search_index entry created synchronously
 ```
@@ -1512,15 +1651,11 @@ Channel: budget:budget:update
 Request body:
   {
     name:            string?
-    num_travelers:   number?  -- pass null to clear
-    close_threshold: number?
     notes:           string?  -- TipTap JSON; pass null to clear
   }
   -- trip_id and is_template are immutable after creation
   -- is_primary is changed only through POST /api/budgets/:id/set-primary
 Response 200: same shape as GET /api/budgets/:id
-Response 400: num_travelers not a positive integer
-  { error: { code: "VALIDATION_ERROR", message: "num_travelers must be a positive integer" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Budget not found" } }
 Response 409: name conflicts with existing budget on same trip
   { error: { code: "DUPLICATE_NAME", message: "A budget named '{name}' already exists on this trip" } }
@@ -1554,6 +1689,24 @@ Response 400:  budget is a template
 Response 404:  { error: { code: "NOT_FOUND", message: "Budget not found" } }
 Side effects:
   -- This budget set to is_primary = 1; the trip's previous primary set to 0
+```
+
+```
+POST /api/budgets/:id/duplicate
+Channel: budget:budget:duplicate
+  -- "Duplicate" in a budget's More ▾ (a second scenario for the same trip) and on a
+  -- template's row in Settings › Budget.
+Request body:  { name: string  required }  -- the renderer proposes "<name> copy"
+Response 201:  same shape as GET /api/budgets/:id
+Response 400:  { error: { code: "VALIDATION_ERROR", message: "Name is required" } }
+Response 404:  { error: { code: "NOT_FOUND", message: "Budget not found" } }
+Response 409:  name already used on the same trip, or by another template
+  { error: { code: "DUPLICATE_NAME", message: "A budget named '{name}' already exists on this trip" } }
+Side effects:
+  -- Live budget: copied onto the same trip with every category, line item, amount and
+     note; the copy is never primary
+  -- Template: copied as a new template (names only, as templates hold no amounts)
+  -- Live budget copy: search_index entry created synchronously
 ```
 
 ---
@@ -1738,17 +1891,21 @@ Channel: budget:line-item:update
 Request body:
   {
     name:     string?
-    budgeted: number?  -- pass null to clear
-    actual:   number?  -- pass null to clear
-    notes:    string?
-    position: number?
+    budgeted:    number?  -- pass null to clear
+    actual:      number?  -- pass null to clear
+    notes:       string?
+    position:    number?
+    category_id: string?  -- move to another category of the same budget (drag between
+                          -- categories); lands at position, or at the end
   }
 Response 200: same shape as POST /api/budgets/categories/:category_id/line-items response
 Response 400: budgeted or actual is negative
   { error: { code: "VALIDATION_ERROR", message: "Cost values cannot be negative" } }
+Response 400: category_id belongs to another budget
+  { error: { code: "VALIDATION_ERROR", message: "A line can only move within its own budget" } }
 Response 404: { error: { code: "NOT_FOUND", message: "Line item not found" } }
 Side effects:
-  -- Sibling positions recompacted if position changed
+  -- Sibling positions recompacted if position changed; on a move, both categories
   -- Parent budget's search_index entry updated synchronously if name changed
 ```
 
@@ -2204,14 +2361,16 @@ Side effects: orphaned image and thumbnail files permanently deleted from disk
 - Search is always synchronous — no loading state expected for typical library sizes
 - Case-insensitive; porter stemming applied (e.g. "hiking" matches "hike")
 - **Filter-only browsing.** `GET /api/search` also works with no keyword when at least
-  one of `country_id`, `status` or `tag_id` is given. This is how the master library
-  and country views filter by tag or status without a search term (US-027, US-028).
-  Results then come straight from the source tables, ordered by title
+  one of `country_id`, `status` or `tag_id` is given. This is how the Countries list
+  and country views filter by tag without a search term (US-028). The Trips list
+  filters through `GET /api/trips` instead. Results come straight from the source
+  tables, ordered by title
 - An empty or whitespace-only query string with no filters returns an empty result set —
   not an error
 - Single-character queries permitted
 - A filter that has no meaning for a content type excludes that type: `status` returns
-  only countries and trips; `tag_id` returns only the content type the tag belongs to;
+  only trips (the only content with a status, D-09); `tag_id` returns only the content
+  type the tag belongs to;
   `country_id` excludes General and Unlinked tips
 
 ---
@@ -2225,8 +2384,8 @@ Query params:
   q            string?            -- keyword; optional when country_id, status or tag_id is given
   content_type string?            -- country | region | city | poi | trip | tip | budget
   country_id   string?            -- filter to content under this country
-  status       string?            -- filter by status (countries and trips only)
-                                  -- repeatable: status=x&status=y; OR-ed
+  status       string?            -- trip status (Sample | Planning | Ready | Completed);
+                                  -- returns trips only. Repeatable; OR-ed
   tag_id       string?            -- repeatable: tag_id=x&tag_id=y; AND-ed
   limit        number?            -- default: 50; max: 200
   offset       number?            -- default: 0
@@ -2261,8 +2420,7 @@ Side effects: none
      (US-028). tag_ids from two different content types therefore return nothing.
   -- country_id matches: the country itself; regions, cities and POIs in it; trips
      linked to it; budgets on those trips; tips whose destination is in it.
-  -- status matches countries.status and trips.status only. Several status values
-     are OR-ed; a value that belongs to only one of the two types matches only that type.
+  -- status matches trips.status only. Several status values are OR-ed.
   -- Without q: results are ordered by title, snippet is an empty string and rank is 0.
 ```
 
@@ -2434,8 +2592,11 @@ Response 200:
       }
     ]
   }
-  -- Ordered by target_date ascending; no target_date sorted to end by created_at.
+  -- Ordered by target_date ascending; windows with no target_date come after every
+     dated one, oldest created first, and the list shows them as "No date yet" (US-030).
   -- target_label is display text only and never affects the order.
+  -- The renderer splits Upcoming and Past by target_date against today; an undated
+     window is always Upcoming.
 Side effects: none
 ```
 
@@ -2468,6 +2629,11 @@ Response 200:
         notes:             string | null,  -- TipTap JSON
         countries:         [{ id: string, name: string }],
         tags:              [{ id: string, category: string, value: string }],
+        length:            { days: number, complete: boolean },
+        blocks:            [ <summary block> ],  -- same shape as in GET /api/presentation/:window_id,
+                                                 -- without highlights; drives the route text
+        hero_image:        { app_url: string, thumbnail_url: string } | null,
+                                                 -- hero rule in Module 8 Key behaviours
         budget_snapshots: [
           {
             id:               string,
@@ -2477,7 +2643,6 @@ Response 200:
             total_actual:     number | null,
             total_difference: number | null,
             actuals_complete: boolean,
-            cost_per_person:  number | null,
             cost_per_day:     number | null,
             variance_status:  string | null
           }
@@ -2487,6 +2652,7 @@ Response 200:
   }
 Response 404: { error: { code: "NOT_FOUND", message: "Travel Window not found" } }
 Side effects: none
+  -- trips are in position order — the order presentation uses
 ```
 
 ```
@@ -2722,6 +2888,21 @@ Side effects:  all is_chosen flags in window set to 0
   preserved record are projections of it. This module supplies the payload when the
   Travel Windows module captures a snapshot, and upgrades older versions when they are read
 - Keyboard navigation state managed entirely client-side
+- **Hero image** (US-041). Every `hero_image` in this module, the Travel
+  Window detail and the Trips list is chosen by the same rule, first match wins:
+  1. the trip's designated hero (`media.is_hero` on the trip)
+  2. the trip's first photo by `position`
+  3. walking the trip's location blocks in order, the block's most specific place first
+     (city, then region, then country): that place's designated hero, else its first photo
+  4. the first photo of a POI placed on the trip's days, in day and position order
+  5. a country linked to the trip with no block behind it: hero, else first photo
+  6. none — `hero_image: null`, and the renderer shows the neutral placeholder
+
+  `hero_image.source` names where it came from (`trip | city | region | country | poi`).
+  Nothing is ever designated automatically: the rule only chooses what to show
+- **The window must have a trip.** Presentation needs at least one shortlisted trip;
+  the Travel Window disables Present with "Add a trip first" (US-037), and these
+  channels return `EMPTY_WINDOW` as a backstop
 
 ---
 
@@ -2753,15 +2934,28 @@ Response 200:
         notes:             string | null,   -- TipTap JSON
         countries:         [{ id: string, name: string }],
         tags:              [{ id: string, category: string, value: string }],
+        length:            { days: number, complete: boolean },
         blocks: [
           {
+            -- <summary block>
             id:            string,
             position:      number,
-            country_name:  string,
+            kind:          string,         -- location | travel
+            country_name:  string | null,
             region_name:   string | null,
             city_name:     string | null,
+            travel_mode:   string | null,
+            from_label:    string | null,
+            to_label:      string | null,
             duration_days: number | null,
-            days_expanded: boolean
+            has_days:      boolean,
+            highlights: {                  -- "Highlights by stop" (D-14); location blocks only
+              pois: [{ poi_id: string, poi_name: string, is_must_do: boolean }],
+                -- up to 2 POIs placed on this block's days, Must Do first, then by day
+                   and position. Never drawn from the library — a block with no days
+                   or no POIs has an empty list ("No places picked yet")
+              more_count: number           -- further distinct POIs on its days ("+N more places")
+            } | null                       -- null on travel blocks
           }
         ],
         budget_snapshots: [
@@ -2769,16 +2963,28 @@ Response 200:
             id:               string,
             name:             string,
             is_primary:       boolean,
-            num_travelers:    number | null,
             total_budgeted:   number | null,
             total_actual:     number | null,
             total_difference: number | null,
             actuals_complete: boolean,
-            cost_per_person:  number | null,
             cost_per_day:     number | null,
-            variance_status:  string | null
+            variance_status:  string | null,
+            category_split: [              -- "Where the money goes" (D-14); primary only,
+              {                            -- empty on other budgets
+                name:     string,
+                budgeted: number           -- category subtotal in cents; categories with
+              }                            -- no budgeted amount are left out
+            ]
           }
         ],
+        hero_image: {
+          app_url:       string,
+          thumbnail_url: string,
+          source:        string            -- trip | city | region | country | poi
+        } | null,
+        thumbnails: [{ app_url: string, thumbnail_url: string }],
+          -- up to 3 more photos for the summary strip, taken by the same walk as the
+             hero rule, skipping the hero; empty when there are none
         media: [
           {
             id:            string,
@@ -2797,7 +3003,8 @@ Response 400: travel window has no shortlisted trips
 Side effects: none
   -- budget_snapshots lists every budget on the trip, primary first. The individual
      trip view shows the primary and indicates when others exist (US-040)
-  -- blocks array is location-block summary only — day detail fetched separately
+  -- blocks array is the itinerary summary (location and travel) with highlights —
+     day detail fetched separately
   -- Deleted-record entries populated from the trip snapshot; shape is identical
 ```
 
@@ -2815,15 +3022,11 @@ Response 200:
     -- All fields from GET /api/presentation/:window_id trips array entry, plus:
     blocks: [
       {
-        id:            string,
-        position:      number,
-        country_name:  string,
-        region_name:   string | null,
-        city_name:     string | null,
-        duration_days: number | null,
-        days_expanded: boolean,
+        -- every <summary block> field, plus:
         notes:         string | null,  -- TipTap JSON
-        days: [
+        days: [                        -- empty for travel blocks and blocks without days.
+                                       -- Every day that exists is included, whether or not
+                                       -- the block is open in the trip builder
           {
             id:         string,
             day_number: number,
@@ -2859,14 +3062,11 @@ Response 200:
         name:            string,
         is_primary:      boolean,
         notes:           string | null,  -- TipTap JSON
-        num_travelers:   number | null,
-        close_threshold: number,
         snapshot: {
           total_budgeted:   number | null,
           total_actual:     number | null,
           total_difference: number | null,
           actuals_complete: boolean,
-          cost_per_person:  number | null,
           cost_per_day:     number | null,
           variance_status:  string | null
         },
@@ -2917,7 +3117,7 @@ Response 200:
         thumbnail_url: string,
         is_hero:       boolean,
         position:      number,
-        source:        string   -- trip | country | poi
+        source:        string   -- trip | country | region | city | poi
       }
     ]
   }
@@ -2931,7 +3131,8 @@ Trip snapshot contents (trip_snapshots.data):
      the travel_window_trips row: id, trip_id (null), position, is_chosen,
      is_deleted_record (true), deleted_at
   -- Fully denormalised and frozen at deletion: names, rich text, budget totals and
-     variance statuses, and tips are stored as values, never recomputed
+     variance statuses, and tips are stored as values, never recomputed. Variance
+     statuses therefore keep the thresholds that were set on the day of deletion
   -- All ids inside are historical. The renderer must not link from a preserved
      record to library records, which may have changed or been deleted
   -- media entries carry the app_url / thumbnail_url of snapshot-owned media rows,
@@ -2958,29 +3159,25 @@ Response 200:
         name:              string,
         status:            string | null,
         completed_at:      string | null,
+        notes:             string | null,  -- TipTap JSON: the trip concept ("The idea" row,
+                                           -- FR10). The renderer clamps it to 2 lines
         countries:         [{ id: string, name: string }],
-        blocks: [
-          {
-            position:      number,
-            country_name:  string,
-            region_name:   string | null,
-            city_name:     string | null,
-            duration_days: number | null
-          }
-        ],
+        length:            { days: number, complete: boolean },
+        blocks:            [ <summary block> ],  -- without highlights; drives the compact
+                                                 -- route strip and route text
         tags: [{ id: string, category: string, value: string }],
         budget_count:    number,   -- all budgets on the trip; > 1 = more detail available
         budget_snapshot: {
           name:             string | null,
           total_budgeted:   number | null,
           total_actual:     number | null,
-          cost_per_person:  number | null,
           cost_per_day:     number | null,
           variance_status:  string | null
         } | null,
         hero_image: {
           app_url:       string,
-          thumbnail_url: string
+          thumbnail_url: string,
+          source:        string    -- hero rule in Key behaviours
         } | null
       }
     ]
@@ -3011,10 +3208,57 @@ Side effects: none
   database only; the backup folder holds the database and all media
 - Local snapshots are taken automatically (before migrations, and daily). These
   endpoints add manual control, the backup folder, and restore
-- Settings here are stored in `userData/settings.json`, not in the database
+- The backup folder path and backup times are kept in the `backup` section of
+  `userData/settings.json` (through Module 10), not in the database
 - A restore replaces the current library and relaunches the app
+- **Launch state.** Before the main window loads, the main process decides which of
+  three screens the renderer opens: the normal app, **first run** (the library is empty
+  and the user has not yet chosen Start fresh or restored — `backup.first_run` is still
+  true) or
+  **recovery** (the startup check or a migration failed). The renderer reads this
+  once with `backup:launch:get`
 
 ---
+
+### Launch State
+
+```
+GET /api/backup/launch
+Channel: backup:launch:get
+Response 200:
+  {
+    mode: string,     -- normal | first_run | recovery
+    recovery: {
+      reason:       string,         -- integrity_failed | migration_failed
+      detail:       string,         -- the check's or migration's error text ("Show details")
+      damaged_file: string | null,  -- integrity_failed: the kept copy's file name,
+                                    -- e.g. "wanderly-damaged-2026-10-09.db"
+      app_version:  string          -- migration_failed: the version that could not migrate
+    } | null          -- present only when mode = recovery
+  }
+Side effects: none
+  -- integrity_failed: the damaged database was copied (once per damaged file) to
+     userData/wanderly-damaged-<date>.db before this screen opens, so a restore never
+     overwrites the copy. If that name exists, a counter is added (-2, -3, …). The live
+     file is left in place, so quitting and relaunching returns to recovery until a
+     restore succeeds
+  -- migration_failed: the migration was rolled back and the pre-migration snapshot
+     restored, so the library is intact but on the old schema. This version of the app
+     cannot open it; the screen offers Quit, Copy details and Show library file (D-50; see
+     Backup and Recovery Pattern in architecture.md)
+```
+
+```
+POST /api/backup/first-run/start-fresh
+Channel: backup:first-run:start-fresh
+  -- "Start fresh" on the first-run screen (D-35): keeps the empty library.
+Request body:  none
+Response 200:  { mode: "normal" }
+Response 400:  launch mode is not first_run
+  { error: { code: "VALIDATION_ERROR", message: "Not in first run" } }
+Side effects:  first-run flag cleared in settings.json; the library stays empty
+  -- No sample content is created (D-35)
+```
 
 ### Status
 
@@ -3051,6 +3295,30 @@ Response 200:  { path: string | null }   -- null if the user cancelled; setting 
 Response 400:  folder is inside the app data directory, or is not writable
   { error: { code: "VALIDATION_ERROR", message: "Choose a writable folder outside the app's data directory" } }
 Side effects:  path saved to settings.json; a "Wanderly Backup" subfolder is created
+```
+
+```
+POST /api/backup/folder/pick
+Channel: backup:folder:pick
+  -- Opens the native folder dialog to choose a folder to restore from (first run,
+  -- recovery, "Restore from another folder…"). Nothing is saved by this call.
+Request body:  none
+Response 200:
+  {
+    picked_path:   string | null,   -- null if the user cancelled
+    backup_path:   string | null,   -- the "Wanderly Backup" folder that was found:
+                                    -- the picked folder itself, or a child of it
+                                    -- named "Wanderly Backup" (one level down, so
+                                    -- picking the drive works); null if neither
+    summary: {
+      created_at:     string,       -- newest database copy in the folder
+      includes_media: true,
+      counts:         { countries: number, pois: number, trips: number },
+      size_bytes:     number,       -- database copy + media mirror
+      restorable:     boolean       -- false if made by a newer app version
+    } | null                        -- null when backup_path is null
+  }
+Side effects: none
 ```
 
 ```
@@ -3109,11 +3377,19 @@ Response 200:
         schema_version: string,
         includes_media: boolean,         -- true only for source = folder
         restorable:     boolean,         -- false if made by a newer app version
-        counts: { countries: number, pois: number, trips: number } | null
+        unrestorable_reason: string | null,  -- tooltip text when restorable = false
+        counts: { countries: number, pois: number, trips: number },
+          -- written beside each copy when it is made (a small JSON sidecar for local
+             snapshots, manifest.json for the folder), so listing never opens a database.
+             A copy without one is opened read-only once and counted
+        size_bytes:     number
       }
     ]
   }
 Side effects: none
+  -- folder_path may be the picked folder or its "Wanderly Backup" child; the same
+     one-level-down lookup as POST /api/backup/folder/pick applies
+  -- Newest first
 ```
 
 ```
@@ -3139,6 +3415,141 @@ Response 422: integrity check failed, or made by a newer app version
   { error: { code: "INVALID_BACKUP", message: "This backup cannot be restored", reason: string } }
 Side effects (with confirm: true):
   -- Current database snapshotted to userData/backups/ as a pre-restore snapshot
-  -- Database replaced; for a folder restore point, media copied into the media directory
+     (skipped in first run, where the library is empty, and in recovery, where a copy
+     of the damaged file has already been kept)
+  -- Folder restore point: media copied into the media directory first, then the
+     database. The live library is replaced only after every file has copied, so a
+     failure part-way leaves the current library untouched
+  -- First run: the folder restored from becomes the configured backup folder,
+     and the preferences saved in its manifest.json (palette, theme,
+     thresholds, keymap) are applied, so a new machine looks and behaves like the old one
+  -- Any successful restore clears backup.first_run
   -- App relaunches; pending migrations run; search index rebuilt
+  -- The confirm step is skipped in first run and recovery — there is no library to
+     lose; the renderer calls once with confirm: true
+Response 409: (with confirm: true)  cancelled by backup:restore:cancel
+  { error: { code: "RESTORE_CANCELLED", message: "Restore cancelled" } }
+Emits: backup:restore:progress (while copying; see below)
 ```
+
+```
+Event: backup:restore:progress            (main → renderer; NFR6, D-51)
+Payload:
+  {
+    phase:       string,   -- validating | copying_media | copying_database | finishing
+    bytes_done:  number,
+    bytes_total: number,   -- known before copying starts, so the bar is determinate
+    files_done:  number,
+    files_total: number
+  }
+  -- Sent at most every 100 ms and once at the end of each phase. bytes_total covers
+     the media mirror plus the database copy. A local snapshot restore copies the
+     database only, so it reports one short copying_database phase
+  -- Cancelling: allowed during validating and copying_media (D-51) through
+     backup:restore:cancel below. copying_database and finishing cannot be cancelled;
+     the renderer shows "Finishing…" with no Cancel
+```
+
+```
+POST /api/backup/restore/cancel
+Channel: backup:restore:cancel
+  -- "Cancel — nothing has changed yet" on the first-run restore (D-51)
+Request body:  none
+Response 200:  { cancelled: true }
+Response 409:  no restore running, or it has reached copying_database
+  { error: { code: "RESTORE_NOT_CANCELLABLE", message: "Restore can no longer be cancelled" } }
+Side effects:
+  -- Copying stops; media files copied by this restore are deleted (files that were
+     already in the media directory are left alone). The library is untouched
+  -- The pending backup:restore call resolves with
+     { error: { code: "RESTORE_CANCELLED", message: "Restore cancelled" } }
+  -- Launch mode is unchanged, so the renderer stays on the screen it started from
+```
+
+---
+
+## Module 10 — Settings & UI State
+
+**IPC prefix:** `settings`
+
+**Key behaviours:**
+
+- One file, `userData/settings.json`, owned by this module (UI State Store in
+  `architecture.md`). Nothing here is in the database, so restoring a restore point
+  never changes the user's appearance, thresholds or layout. The one exception is a
+  first-run restore from a backup folder, which applies the preferences saved in that
+  folder's manifest.json (Module 9) so a new machine matches the old one
+- Three sections: `preferences` (chosen in Settings), `ui` (remembered as the user
+  works — no Settings control) and `backup` (written by Module 9 through this module,
+  read-only to the renderer)
+- Every value has a default. A missing, unknown or invalid value is replaced by its
+  default when the file is read and the problem is logged; a file that cannot be parsed
+  is renamed to `settings-unreadable-<date>.json` and defaults are used — a bad settings
+  file never stops the app from opening
+- Writes are atomic (write a temporary file, then rename) and coalesced: several
+  updates within 250 ms are written once. The renderer applies a change immediately and
+  does not wait for the write
+- Budget variance (Module 3) reads `preferences.budget_thresholds` through this module's
+  service interface
+
+```
+GET /api/settings
+Channel: settings:all:get
+Response 200:
+  {
+    preferences: {
+      palette:           string,   -- paper | atlas; default paper (D-10)
+      theme:             string,   -- light | dark | system; default system (D-05)
+      budget_thresholds: {
+        close:    number,          -- fraction, default 0.10 (D-18)
+        way_over: number           -- fraction, default 0.25; always > close
+      },
+      keymap: { [action_id: string]: string }   -- P2 (US-067); {} until then.
+                                                  -- Only overrides are stored
+    },
+    ui: {
+      nav_collapsed:      boolean,                          -- D-17
+      nav_sections:       { [section: string]: boolean },   -- expanded per nav section
+      list_views:         { [list: string]: string },       -- list | grid, per list (D-24, D-34)
+      list_sorts:         { [list: string]: string },       -- sort id per list page
+      window_views:       { [window_id: string]: string },  -- one_at_a_time | side_by_side (D-30)
+      expanded_blocks:    { [trip_id: string]: string[] },  -- open block ids per trip (D-44)
+      contents_collapsed: { [place_id: string]: string[] }, -- collapsed ContentsIndex rows
+      tutorial_seen:      boolean                           -- P2 (US-066); false until then
+    },
+    backup: {
+      folder_path:     string | null,
+      last_backup_at:  string | null,
+      first_run:       boolean
+    }
+  }
+Side effects: none
+```
+
+```
+PATCH /api/settings
+Channel: settings:all:update
+Request body:
+  {
+    preferences: { ...any subset of preferences }?,
+    ui:          { ...any subset of ui }?
+  }
+  -- Merged one level deep: { ui: { list_views: { trips: "grid" } } } changes only that
+     key. A map value of null removes that key (e.g. a deleted trip's expanded_blocks)
+  -- backup is not writable through this channel
+Response 200: same shape as GET /api/settings
+Response 400: a value of the wrong type, an unknown palette/theme/view, a threshold
+  outside 0.01–1.00, or way_over ≤ close
+  { error: { code: "VALIDATION_ERROR", message: "Way over must be higher than Close (10%)", field: string } }
+  -- Nothing in the request is applied when any field is invalid; the previous values
+     stay in effect (Settings › Budget "invalid" state)
+Side effects:
+  -- settings.json rewritten (coalesced, atomic)
+  -- A thresholds change takes effect on the next budget read; open budget screens
+     re-fetch
+```
+
+**Housekeeping.** When a trip, Travel Window or place is deleted, its keys in
+`ui.expanded_blocks`, `ui.window_views` and `ui.contents_collapsed` are removed by the
+deleting module through this module's service interface. Stale keys are harmless —
+they are also dropped on read when the id no longer exists.

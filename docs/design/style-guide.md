@@ -1,7 +1,7 @@
 ---
 title: Style guide
 status: locked (design system v1, D-23; critique round 1 passed, D-45)
-last-updated: 2026-10-09
+last-updated: 2026-10-13
 ---
 
 # Wanderly — style guide
@@ -77,7 +77,7 @@ Balanced: airy at rest, dense content stays readable. One label per section at m
 ## Iconography and imagery
 
 - Icons are rare and functional: chevrons, drag handle, pin, close, collapse. Stroke style, `currentColor`, 16px grid, 1.5px stroke. Never icon-only buttons in the workspace; icon buttons (close, collapse) always carry an accessible label and a tooltip.
-- Photos are small in the workspace (3-across thumbnails) and framed on a `mat` in presentation. The hero is always chosen by the person. A missing photo shows a quiet neutral block, never a broken image.
+- Photos are small in the workspace (3-across thumbnails) and full-bleed in presentation (D-52); `mat` is the colour of the "no photo" placeholder. The hero is always chosen by the person. A missing photo shows a quiet neutral block, never a broken image.
 - No illustrations, mascots, emoji or stock textures.
 
 ## Voice
@@ -116,6 +116,7 @@ Plain, specific, first-person-adjacent — it's your notebook. Verbs on buttons 
 | D-17 | Side nav fully collapsible (⌘\, edge button, remembered) | More room for notes; labels-only rule rules out an icon rail |
 | D-18 | Budget has no Status column; Difference is color-coded in four tiers (Under, Close, Over, Way over) with glyphs; Close % and Way-over % are global settings | Less table noise; one place to read status. `/pm` + `/architect`: replace per-budget `close_threshold` with two global settings, add the Way-over tier to variance status |
 | D-19 | Shortcut keys in buttons are fixed-height keycaps centered with the label; the add "+" is a drawn icon, not a character | Mono, sans and the "+" glyph sit on different baselines; fixed boxes keep everything on one axis |
+| D-20 | No "partial" label on subtotals | The Pending lines already show what's missing. `/pm`: US-021 edge case ("labeled as partial") changes |
 | D-21 | Trip status: Sample hollow dot, Planning blue (`info`), Ready green (`success`), Completed filled ink dot + date | Green means "ready"; keeps Planning distinct from budget Under |
 | D-22 | Presentation keys approved: C opens comparison, 1–5 jump to full-detail sections | Faster navigation in the decision conversation |
 | D-23 | Design system locked for wireframes | User review, first pass complete |
@@ -123,14 +124,14 @@ Plain, specific, first-person-adjacent — it's your notebook. Verbs on buttons 
 | D-25 | (P2 idea) Budget category colors chosen by the user from a curated per-palette swatch set (~8, contrast-checked) | User request, deferred |
 | D-26 | Countries, regions and cities are sub-pages, each with its own notes. The right panel is "Inside <place>" with → rows; notes are labeled "<place> notes"; region and city pages show "Also in <parent>" siblings | User confirmed the hierarchy model; the old "Contents" label read like a table of contents for one page |
 | D-27 | Trip builder adds Travel blocks (flight, train, bus, ferry, drive): free-text from/to, whole days or 0 (a first-block 0-day departure is Day 0 — the evening you leave after work), notes; count toward trip length and per-day cost; no POIs; no automatic budget lines | Long-haul travel days are real and change trip length and cost per day; no half days, no coupling with budgets |
-| D-28 | Budgets are shared (one pot) by default; cost per person is removed from this version until split budgets are defined | User decision; per-person needs the split model (handoff 18) to be meaningful |
-| D-20 | No "partial" label on subtotals | The Pending lines already show what's missing. `/pm`: US-021 edge case ("labeled as partial") changes |
+| D-28 | Budgets are shared (one pot) by default; cost per person is removed from this version until split budgets are defined | User decision; per-person needs the split model (US-064, FR16) to be meaningful |
+| D-29 | "Start a trip" from a country creates the trip with only that country linked (its chip in the header) — no location block | User decision; the builder starts clean and the user places the first block themselves |
 | D-30 | A Travel Window opens side by side when it has 2+ trips; one at a time for a single trip, or when the user last chose it (remembered per window) | Side by side is where the choice gets made |
 | D-31 | Present is ⌘↵ outside presentation — no single-letter shortcuts in the app | Single letters would fire while typing in notes; single letters stay inside presentation (D-22) |
 | D-32 | "Mark as chosen" lives only in the app's Travel Window view, never in presentation | Presentation is the conversation with the Co-Decider; the choice is recorded afterwards |
 | D-33 | Child pages (region, city, POI, tip) get an obvious "← <parent>" Button above the title, plus ⌘↑ / Alt+↑; it goes up one level. History back stays ⌘[ / Alt+← and the mouse back button | The breadcrumb alone was too easy to miss. Up-a-level is predictable; history back can land anywhere (search, a trip) |
 | D-34 | Trips list has List (default) and Grid views, switchable and remembered — same pattern as Countries (D-24) | User decision; one consistent list pattern |
-| D-35 | A fresh install starts with an empty library — no seeded sample content | Samples would need deleting by hand; the later tutorial (handoff 20) can bring its own |
+| D-35 | A fresh install starts with an empty library — no seeded sample content | Samples would need deleting by hand; the later tutorial (US-066) can bring its own |
 | D-36 | "Must do" stays a single-select POI tag, drawn heavier than other chips | Already a tag in the data model; filters and searches like any tag; no second way to classify |
 | D-37 | Unlinked tips have no banner in the Tips list; they show only when filtering by Place › Unlinked. The sidebar's "Unlinked 1" count under Tips is the one standing reminder | User decision; keeps the list calm while the count stops them being forgotten |
 | D-38 | Tips and lessons learned share one list, told apart by a TIP / LESSON label (never color alone); a follow-up lesson sits under its tip | User decision; follow-ups belong next to what they answer |
@@ -139,11 +140,17 @@ Plain, specific, first-person-adjacent — it's your notebook. Verbs on buttons 
 | D-41 | Contour lines appear only in country, region and city headers — never on POIs, trips, lists, Settings, Tips, Travel Windows or presentation. They sit behind content (no pointer events) and stop at the toolbar | The motif means "a place that holds places"; used everywhere it becomes wallpaper, and working screens stay quiet |
 | D-42 | The Toolbar is a full-width `surface` band with a `border-control` rule below; buttons are outlined on `bg` with accent "+" icons; in the trip builder the selection leads as a "Selected · Chiang Mai · 6 days" chip and a divider splits its actions from the add actions; the bar sticks on scroll. The trip builder's right column drops Trip notes (budget + windows only) | User: the trip builder was busy and the toolbar got lost |
 | D-43 | Presentation trip title (`trip-title`) is 64px Newsreader 400; `trip-title-sm` (24px) stays for full detail and comparison | User compared 48 vs 64 in hi-fi; 64 carries the "look how cool" moment |
-| D-44 | Trip builder has Expand all / Collapse all above the itinerary (⌥⌘↓ / ⌥⌘↑), with a live "7 blocks · 1 expanded" count. Blocks without a duration stay collapsed on Expand all; travel blocks never expand. Expanded state is remembered per trip (UI state, handoff 14) | User request; long trips need a quick overview and a quick way into detail |
+| D-44 | Trip builder has Expand all / Collapse all above the itinerary (⌥⌘↓ / ⌥⌘↑), with a live "7 blocks · 1 expanded" count. Blocks without a duration stay collapsed on Expand all; travel blocks never expand. Expanded state is remembered per trip (UI State Store in `architecture.md`) | User request; long trips need a quick overview and a quick way into detail |
 | D-45 | Critique round 1 fixes: keycaps on filled buttons are outline-only (was 4.05:1); keycap text 12px; selected nav = `surface` + `border-control` outline + `accent` label; `:focus-visible` 2px accent ring defined for every control (not drawn on the mockups — the user preferred them without it; it shows only on keyboard focus); drawn grip icon; nested radius 1:2 (PoiCard `radius-sm` in a block); spacing snapped to the scale; new `lede` 18/1.6 style for presentation; presentation estimate uses `money-lg`; Paper `cat-5` adjusted (PL #c6bfb2, PD #454c5b) so route neighbours are ≥3:1; travel blocks use `sidebar` fill and mode labels | critique-design, round 1 |
 | D-46 | Trip builder rows read: day column (left-aligned, one 80px column for block headers and day rows), location, then tag / note / duration / actions on the right | User: a single left column of days scans smoothly down the itinerary |
 | D-47 | Trip builder rows carry only days, location, tags and actions — no system-written labels ("evening", "overnight", "same day"), no inline notes and no separate duration; the person writes notes in the block | User: cleaner rows; notes are the user's to write |
-| D-29 | "Start a trip" from a country creates the trip with only that country linked (its chip in the header) — no location block | User decision; the builder starts clean and the user places the first block themselves |
+| D-48 | Collapsing an expanded block is a view choice: no dialog, nothing deleted, remembered per trip. "Expand to days" creates the days the first time; after that expand/collapse only show or hide them. Presentation shows every day that exists | `/architect` made collapse UI state; a confirm for a change that loses nothing is friction |
+| D-49 | "Change place…" offers the block's own country first, then other countries; any choice keeps the days. Another country is linked to the trip automatically; the old one stays linked until the user removes its chip (links are never removed automatically, as on block delete) | Question J; the data keeps days either way. Amended: a silent unlink could drop a country the user linked on purpose |
+| D-50 | Failed-migration recovery: "Wanderly couldn't update your library — it's safe and unchanged"; Quit (primary), Copy details, Show library file; advice to reinstall the previous version. No "Open library" | Question I; this version cannot open a library on the old schema |
+| D-51 | First-run restore can be cancelled while photos copy ("Cancel — nothing has changed yet"); the final swap shows "Finishing…" with no Cancel | Question F; nothing is replaced until the final swap |
+| D-52 | Presentation hero photo is full-bleed (no `mat` frame); `mat` becomes the no-photo placeholder colour | Question D; matches the approved hi-fi |
+| D-53 | Follow-up lessons on Tip detail sit in a bordered `surface` box, not a left-rule card | Question E |
+| D-54 | Keycaps keep `radius-sm` (4px) inside 6px buttons — an accepted exception to the 1:2 nested-radius rule at this size | Critique round 1 nit; 3px is off the radius scale and the difference is invisible at 20px |
 
 ## Vibe summary
 
@@ -151,4 +158,4 @@ An enhanced, modern, organised notebook (D-05): the calm of a paper notebook wit
 
 Personas: the **Trip Architect** (builds everything, keyboard-first, desktop) and the **Co-Decider** (sees only presentation mode; must never need an explanation).
 
-Open items for `/pm` and `/architect` are in [handoff-to-pm-architect.md](handoff-to-pm-architect.md).
+The design backlog and P0 story coverage are in [links.md](links.md).

@@ -58,7 +58,7 @@ Interactions: threshold changes recolour every budget immediately; Delete templa
 Keyboard: percent fields: Up/Down step by 1.
 
 Edge cases:
-- US-020 threshold configurable, default 10% → global (D-18; handoff 5, 9).
+- US-020 threshold configurable, default 10% → global (D-18; FR8).
 - US-022 delete doesn't affect budgets; unique names → as above.
 
 ---
@@ -66,12 +66,12 @@ Edge cases:
 ## New / edit budget template
 
 Screen:      Settings › Budget › New template
-Serves:      US-022, handoff 23
+Serves:      US-022
 Components:  Button ("← Budget"), Field (name), SegmentedControl (Start from), Field (`select`), Toolbar (`contextual`), DayRow-style list (categories + lines), Button
 
 States:
 - new — "← Budget" + ⌘↑; "New budget template"; Name (required, unique); Start from: Blank / Copy of a template (+ template select) / An existing budget (+ trip › budget select); note "Templates hold categories and line names only. A budget made from one starts with this structure and empty amounts — then it is its own copy, free to change." Structure: category boxes (grip, name, "N lines"), each with line rows ("no amount") and "+ Line"; toolbar for the selected category/line: + Category, + Line, Rename, Remove. Footer: Cancel, primary "Save template".
-- edit existing — same screen, title is the template name, no Save button: edits autosave (handoff 23).
+- edit existing — same screen, title is the template name, no Save button: edits autosave (US-022).
 - invalid — duplicate name → "A template called Full Trip Budget already exists".
 
 Keyboard: Tab: name → start from → structure → footer; in the structure Up/Down move, Enter renames, Alt+Up/Down reorders; ⌘↵ saves a new template; Esc on a new template asks nothing and discards (nothing saved yet).
@@ -85,7 +85,7 @@ Edge cases:
 ## Backup & restore
 
 Screen:      Settings › Backup & restore
-Serves:      NFR6, handoff 11, 21
+Serves:      NFR6
 Components:  SettingsRow (`action`, `notice`), Button, BudgetTable-style list (restore points), ConfirmDialog (`restore`)
 
 States:

@@ -2,7 +2,7 @@
 title: Presentation mode
 status: ready for build
 stories: [US-037, US-038, US-039, US-040, US-041, US-042, US-043]
-last-updated: 2026-10-09
+last-updated: 2026-10-13
 ---
 
 # Presentation mode
@@ -22,7 +22,7 @@ Components:  PresentationShell, RouteStrip (`strip`, `highlights`), BudgetSnapsh
 States:
 - default — no app chrome, no nav, no edit controls. Header: "November 2027 · Option 1 of 3" (left, `small`); "Shortcuts ?" and "Exit Esc" quiet buttons (right). Left column: trip title in `trip-title` (64px Newsreader 400), the concept in `lede` (18/1.6, max 620px), "The route" with RouteStrip `strip` (segments ∝ days; stops alternate `accent` / `cat-5`; travel days hatched with `border`) and labels under each segment; "Highlights by stop" (RouteStrip `highlights`: one column per stop with a 3px top rule in its segment colour, top 2 POIs Must-do first, "+N more places"). Right column (440px): hero photo 256px on its `mat`, three 72px thumbnails, facts ledger (Shared estimate `money-lg`, Works out to $/day, Feels like: tag chips), "Where the money goes" split bar + labelled legend. Footer: option dots (current filled `accent`, others outlined) with trip names, "Full trip detail ↵", "Compare all three C", primary "Next: Portugal →".
 - first trip — there is no Previous button anywhere (← simply does nothing on the first trip). Last trip — "Next" is removed and "Compare all three C" becomes the primary (accent) button, so the natural end of the walk-through is the comparison.
-- no photos — hero area shows a neutral `mat` block with the trip's first letter in `text-muted`; thumbnails omitted.
+- no photos — the hero area is a `mat` block (the "no photo" placeholder colour, D-52) with the trip's first letter in `text-muted`; thumbnails omitted. "No photos" means the whole fallback chain came up empty (architecture.md, Presentation key behaviours): trip hero → trip's first photo → each block's place → POIs on the trip's days → linked countries.
 - no budget — ledger reads "Budget not yet estimated" in place of the three figures; split bar omitted.
 - per day incomplete — "Works out to" shows "Needs every stop's length".
 - no tags on this trip — "Feels like" row hidden.
@@ -43,9 +43,9 @@ Edge cases:
 - US-037 no data or status changes; Esc returns exactly where you were → re-entering starts at the beginning (US-042).
 - US-038 read-only, simple navigation, placeholders, rich text renders → as above.
 - US-040 snapshot: total, per day, Under/Close/Over once actuals exist (Variance on the ledger's estimate line); per person removed (D-28); "Budget not yet estimated"; same position in comparison; snapshot only; primary budget with "1 of 2 budgets" note in `micro` under the estimate.
-- US-041 photos supporting, hero = designated else first available from the trip or its linked places (handoff 12).
+- US-041 photos supporting, hero = designated else first available from the trip or its linked places (hero rule in `api-contracts.md`, Presentation module).
 
-Handoff notes: side padding `space-14`; header and footer `space-6` vertical; option dots 8px; hero photo `radius-sm` on a `mat` frame with `space-2` inset (critique nit — confirm or drop the mat).
+Handoff notes: side padding `space-14`; header and footer `space-6` vertical; option dots 8px; hero photo full-bleed in its box with `radius-sm`, no frame (D-52).
 
 ---
 

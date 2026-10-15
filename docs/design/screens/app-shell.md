@@ -62,4 +62,4 @@ Handoff notes:
 - Nav: 248px wide, `sidebar` fill, `border` right rule, `space-4` top padding. Item rows: header 32px min-height, item 28px; label inset 24px from the nav's inner edge for items.
 - Top bar: 52px, `space-12` side padding, `border` bottom rule.
 - Content max width: none; notes columns cap at 720px; right column 320px; gutter `space-14`.
-- Remembered UI state (handoff item 14): palette, theme, nav collapsed, each section's expanded state, list/grid per list, Travel Window view per window, expanded blocks per trip.
+- Remembered UI state (UI State Store in `architecture.md`): palette, theme, nav collapsed, each section's expanded state, list/grid per list, Travel Window view per window, expanded blocks per trip.
