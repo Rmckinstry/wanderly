@@ -46,7 +46,7 @@ Edge cases:
 - US-001 navigate away mid-creation → the unsaved inline row is discarded; nothing is created.
 - US-001 / US-056 no automatic tags → new country has only the "+ Tag" chip.
 - US-025 multi-country trips → a trip's count appears on every country it links.
-- US-027 status filter → none: countries have no status (D-09, handoff 1).
+- US-027 status filter → none: countries have no status (D-09).
 
 Handoff notes: rows 48px; counts `num-sm`; grid gap `space-4`; card hero 132px tall, flush to the card's top edge and clipped by the card's `radius-lg` corners (the image has no radius of its own, so there is no nested-radius clash). Sort and view stored per list.
 
@@ -90,7 +90,7 @@ Edge cases:
 - US-007 status does not change → no status exists on countries (D-09).
 - US-007b paste from OneNote/browser → keeps headings, bold/italic/underline, lists and links; anything else becomes plain text. No toast.
 - US-007b empty notes prompt never forces formatting → prompt only, no template.
-- US-011 hero is never automatic → no "Hero" badge until the person sets one; presentation then uses the first available photo (handoff 12).
+- US-011 hero is never automatic → no "Hero" badge until the person sets one; presentation then uses the first available photo (hero rule in `api-contracts.md`, Presentation module).
 - US-011 Tips/Budgets/Windows take no images → no photo controls on those screens.
 - US-025 counts at each level → header counts + ContentsIndex counts.
 - US-025 filtering within a country (e.g. POIs tagged Hiking in Thailand) → ⌘F in-record search with Type and Tag filters (search.md); no separate filter UI on the page.

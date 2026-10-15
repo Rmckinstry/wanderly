@@ -28,7 +28,7 @@ States:
 - empty — EmptyState `section` "No trips yet. Start one from a country, or here." + "+ New trip".
 - filtered, no match — EmptyState `search` "No Ready trips in Japan — remove a filter" + Clear filters.
 
-Interactions: row/card opens the builder; List/Grid and sort remembered. Status is single-select in the wireframe (one SegmentedControl choice); Country and Tag are multi-select FilterMenus. Different filters combine with AND. US-027 (P1) asks for several statuses at once — see open question B.
+Interactions: row/card opens the builder; List/Grid and sort remembered. Status is single-select in the wireframe (one SegmentedControl choice); Country and Tag are multi-select FilterMenus. Different filters combine with AND. US-027 (P1) is single-select to match.
 
 Keyboard: as Countries list (Up/Down rows, Enter opens, Alt+Up/Down reorders pinned).
 
@@ -93,7 +93,7 @@ Edge cases:
 - US-012 reorder blocks → drag or keyboard drag.
 - US-012 block at any level, mixed levels → PickerPopover lists all levels together, with their path in `text-muted`.
 - US-012 duration optional → "Set duration" shown; trip length shows "12+ days".
-- US-012 refine a block over time → select block → "Change place…" (More ▾ of the block) opens a PickerPopover: the block's own country and its regions and cities first, then an "Other countries" group. Any choice keeps the block's days, duration and notes. Choosing a place in another country links that country to the trip (its chip appears) and unlinks the old one if no other block uses it (D-49).
+- US-012 refine a block over time → select block → "Change place…" (More ▾ of the block) opens a PickerPopover: the block's own country and its regions and cities first, then an "Other countries" group. Any choice keeps the block's days, duration and notes. Choosing a place in another country links that country to the trip (its chip appears); the old country stays linked until the user removes its chip (D-49).
 - US-012 deleting a block never deletes the place → Remove copy says "not from your library".
 - US-012 country stays linked while used → chip × disabled with tooltip.
 - US-012 region/city used by a block deleted → block widens to the parent with a one-time `text-muted` line "Was Chiang Mai — now Thailand".
@@ -109,7 +109,7 @@ Edge cases:
 - US-015 notes and POIs coexist, notes-only days, rich text → DayRow.
 - US-016 any order, back to earlier status, no content changes → status Menu, no confirm.
 - US-016b date default today, any date, retained when status moves back, shown in Travel Windows → date Field rules; hidden (not deleted) when not Completed.
-- US-021 per person → not shown in v1 (D-28, handoff 18).
+- US-021 per person → not shown in v1 (D-28; split budgets later, US-064).
 - Travel blocks (D-27) → never expand, take no POIs, never create budget lines; count toward length and per-day cost.
 
 Handoff notes:
@@ -119,4 +119,4 @@ Handoff notes:
 - PoiCards inside a block use `radius-sm`; blocks `radius-lg` (1:2).
 - DayRow: day label in the same 80px column, indented 44px (grip 20 + gap 12 + padding 12) so block headers and days share one left edge; DayRow padding `space-3` otherwise.
 - Grip: drawn 6-dot icon, 20×24 hit area, `text-muted`.
-- Expanded state per trip is remembered (handoff 14).
+- Expanded state per trip is remembered (UI State Store in `architecture.md`).

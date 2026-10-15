@@ -854,7 +854,7 @@ regular mapping table gives an indexed lookup and a rowid delete.
 Decided but not part of the P0 schema. Each lands as an ordinary migration when its
 story is scheduled.
 
-**P1 — Split budgets (US-064, FR16; handoff 18).** A budget gains a payment mode and a
+**P1 — Split budgets (US-064, FR16).** A budget gains a payment mode and a
 list of travelers with shares:
 
 ```sql
@@ -882,7 +882,7 @@ per-person figures; templates are always `shared` and have no travelers. Cost pe
 person is computed per traveler as `total × share_bp ÷ 10000`, rounded to the cent.
 There was never a released `num_travelers` column, so nothing is migrated away.
 
-**P2 — Budget category colours (D-25; handoff 15).** `budget_categories` gains
+**P2 — Budget category colours (FR19, D-25).** `budget_categories` gains
 `color TEXT` holding a swatch key from the design system's curated per-palette set
 (e.g. `cat-3`), never a raw colour value, so a palette change recolours every budget.
 Null means the default colour by position. Templates carry the key.

@@ -60,4 +60,4 @@ Every P0 state is drawn and every design question is answered (as of 2026-10-13)
 | US-065 Help / FAQ | P2 | Help view and its route |
 | US-066 First-use tutorial | P2 | Tutorial flow with its own sample content; offered after "Start fresh", replayable from Help |
 | US-067 Keyboard shortcuts | P2 | Settings › Keyboard: shortcut list, rebinding, clash handling, reset to defaults |
-| FR on budget category colours | P2 | User-chosen category colours from a curated per-palette swatch set (D-25) |
+| FR19 Budget category colours | P2 | User-chosen category colours from a curated per-palette swatch set (D-25) |

@@ -14,11 +14,11 @@ Full-window screens without the app shell. Wireframes: Recovery, FirstRun, First
 ## Recovery
 
 Screen:      Recovery — library failed its startup check
-Serves:      NFR6, handoff 21
+Serves:      NFR6
 Components:  Button, SegmentedControl-style radio list (restore points)
 
 States:
-- integrity failure — "Wanderly" wordmark; "Your library couldn't be opened"; "The library file failed its check when Wanderly started, so nothing was opened or changed. Pick a copy to restore — the newest is selected." Radio list of restore points (When · source; counts; "Newest" on the first). Primary "Restore and open ↵", "Restore from another folder…", quiet "Quit". Note: "The damaged file is kept beside the library as wanderly-damaged-2026-10-09.db — nothing is deleted. Show details" (details disclose the check's error text).
+- integrity failure — "Wanderly" wordmark; "Your library couldn't be opened"; "The library file failed its check when Wanderly started, so nothing was opened or changed. Pick a copy to restore — the newest is selected." Radio list of restore points (When · source; counts; "Newest" on the first). Primary "Restore and open ↵", "Restore from another folder…", quiet "Quit". Note: "A copy of the damaged file is kept beside the library as wanderly-damaged-2026-10-09.db — nothing is deleted. Show details" (details disclose the check's error text).
 - failed migration (D-50) — "Wanderly couldn't update your library" / "It's safe and unchanged. This version of Wanderly can't open it until the update works — reinstall the previous version to keep using your library until a fix is out." Primary "Quit"; secondary "Copy details" (copies the error, app version and schema versions for a bug report; Toast "Details copied"); quiet "Show library file" (reveals it in Finder / Explorer). No restore list — every snapshot is on the older format too.
 - no restore points — "No snapshots were found on this computer." + "Restore from another folder…" + "Quit".
 - restoring — primary shows "Restoring…" disabled; then the app restarts.
@@ -39,14 +39,14 @@ Interactions: Start fresh → Countries list in its empty state. Choose backup f
 
 Keyboard: Tab between the two buttons; Enter on the focused one; the first is focused on open.
 
-Edge cases: D-35 no seeded sample content; tutorial deferred (handoff 20).
+Edge cases: D-35 no seeded sample content; tutorial deferred (US-066, P2).
 
 ---
 
 ## First run — restore found
 
 Screen:      First run — restore from a backup folder
-Serves:      NFR6, handoff 21
+Serves:      NFR6
 Components:  Field (read-only path), Button
 
 States:

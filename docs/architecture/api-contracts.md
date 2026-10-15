@@ -76,6 +76,8 @@ fields store and return TipTap JSON strings unless explicitly noted otherwise.
 - `FILE_PROCESSING_ERROR` — image could not be read or processed
 - `BACKUP_FOLDER_UNAVAILABLE` — no backup folder configured, or it cannot be reached
 - `INVALID_BACKUP` — restore point is damaged or was made by a newer app version
+- `RESTORE_CANCELLED` — the user cancelled a restore before anything was replaced
+- `RESTORE_NOT_CANCELLABLE` — no restore is running, or it has reached the database swap
 - `INTERNAL_ERROR` — unexpected failure; details are in the log file, not the response
 
 **Confirmation-required codes** (returned when `confirm` is absent; repeat the call
@@ -1181,10 +1183,11 @@ Side effects:
   -- Block with days: it always has exactly duration_days days.
      Raising duration_days appends empty days numbered after the existing ones
   -- Changing the place (country_id / region_id / city_id) never touches the block's
-     days, duration or notes (handoff 29). The trip builder's "Change place…" offers the
+     days, duration or notes (US-012). The trip builder's "Change place…" offers the
      block's own country first, then other countries (D-49); any choice keeps the days
-  -- If country_id changes, the new country is added to trip_countries if not linked,
-     and the old country's link is removed if no other location block on the trip uses it (D-49)
+  -- If country_id changes, the new country is added to trip_countries if not linked.
+     The old country stays linked (D-49) — links are never removed automatically, the
+     same as on block delete; the user removes the chip with trip:country:remove
 ```
 
 ```
@@ -2885,7 +2888,7 @@ Side effects:  all is_chosen flags in window set to 0
   preserved record are projections of it. This module supplies the payload when the
   Travel Windows module captures a snapshot, and upgrades older versions when they are read
 - Keyboard navigation state managed entirely client-side
-- **Hero image** (US-041; handoff 12). Every `hero_image` in this module, the Travel
+- **Hero image** (US-041). Every `hero_image` in this module, the Travel
   Window detail and the Trips list is chosen by the same rule, first match wins:
   1. the trip's designated hero (`media.is_hero` on the trip)
   2. the trip's first photo by `position`
@@ -3157,7 +3160,7 @@ Response 200:
         status:            string | null,
         completed_at:      string | null,
         notes:             string | null,  -- TipTap JSON: the trip concept ("The idea" row,
-                                           -- FR10; handoff 10). The renderer clamps it to 2 lines
+                                           -- FR10). The renderer clamps it to 2 lines
         countries:         [{ id: string, name: string }],
         length:            { days: number, complete: boolean },
         blocks:            [ <summary block> ],  -- without highlights; drives the compact
@@ -3209,8 +3212,9 @@ Side effects: none
   `userData/settings.json` (through Module 10), not in the database
 - A restore replaces the current library and relaunches the app
 - **Launch state.** Before the main window loads, the main process decides which of
-  three screens the renderer opens: the normal app, **first run** (no library file
-  existed, so an empty one was created and nothing has been chosen yet) or
+  three screens the renderer opens: the normal app, **first run** (the library is empty
+  and the user has not yet chosen Start fresh or restored — `backup.first_run` is still
+  true) or
   **recovery** (the startup check or a migration failed). The renderer reads this
   once with `backup:launch:get`
 
@@ -3233,9 +3237,11 @@ Response 200:
     } | null          -- present only when mode = recovery
   }
 Side effects: none
-  -- integrity_failed: the damaged database was moved aside (not deleted) to
+  -- integrity_failed: the damaged database was copied (once per damaged file) to
      userData/wanderly-damaged-<date>.db before this screen opens, so a restore never
-     overwrites it (handoff 21). If that name exists, a counter is added (-2, -3, …)
+     overwrites the copy. If that name exists, a counter is added (-2, -3, …). The live
+     file is left in place, so quitting and relaunching returns to recovery until a
+     restore succeeds
   -- migration_failed: the migration was rolled back and the pre-migration snapshot
      restored, so the library is intact but on the old schema. This version of the app
      cannot open it; the screen offers Quit, Copy details and Show library file (D-50; see
@@ -3409,22 +3415,25 @@ Response 422: integrity check failed, or made by a newer app version
   { error: { code: "INVALID_BACKUP", message: "This backup cannot be restored", reason: string } }
 Side effects (with confirm: true):
   -- Current database snapshotted to userData/backups/ as a pre-restore snapshot
-     (skipped in first run, where the library is empty, and in recovery, where the
-     damaged file has already been kept aside)
+     (skipped in first run, where the library is empty, and in recovery, where a copy
+     of the damaged file has already been kept)
   -- Folder restore point: media copied into the media directory first, then the
      database. The live library is replaced only after every file has copied, so a
      failure part-way leaves the current library untouched
-  -- First run: the folder restored from becomes the configured backup folder
-     (handoff 21), and the preferences saved in its manifest.json (palette, theme,
+  -- First run: the folder restored from becomes the configured backup folder,
+     and the preferences saved in its manifest.json (palette, theme,
      thresholds, keymap) are applied, so a new machine looks and behaves like the old one
+  -- Any successful restore clears backup.first_run
   -- App relaunches; pending migrations run; search index rebuilt
   -- The confirm step is skipped in first run and recovery — there is no library to
      lose; the renderer calls once with confirm: true
+Response 409: (with confirm: true)  cancelled by backup:restore:cancel
+  { error: { code: "RESTORE_CANCELLED", message: "Restore cancelled" } }
 Emits: backup:restore:progress (while copying; see below)
 ```
 
 ```
-Event: backup:restore:progress            (main → renderer; handoff 31)
+Event: backup:restore:progress            (main → renderer; NFR6, D-51)
 Payload:
   {
     phase:       string,   -- validating | copying_media | copying_database | finishing
@@ -3436,9 +3445,25 @@ Payload:
   -- Sent at most every 100 ms and once at the end of each phase. bytes_total covers
      the media mirror plus the database copy. A local snapshot restore copies the
      database only, so it reports one short copying_database phase
-  -- Cancelling: there is no cancel channel in v1, matching the design (open question F).
-     Until the database swap at the end nothing has been replaced, so a cancel could be
-     added safely by deleting the partly-copied files
+  -- Cancelling: allowed during validating and copying_media (D-51) through
+     backup:restore:cancel below. copying_database and finishing cannot be cancelled;
+     the renderer shows "Finishing…" with no Cancel
+```
+
+```
+POST /api/backup/restore/cancel
+Channel: backup:restore:cancel
+  -- "Cancel — nothing has changed yet" on the first-run restore (D-51)
+Request body:  none
+Response 200:  { cancelled: true }
+Response 409:  no restore running, or it has reached copying_database
+  { error: { code: "RESTORE_NOT_CANCELLABLE", message: "Restore can no longer be cancelled" } }
+Side effects:
+  -- Copying stops; media files copied by this restore are deleted (files that were
+     already in the media directory are left alone). The library is untouched
+  -- The pending backup:restore call resolves with
+     { error: { code: "RESTORE_CANCELLED", message: "Restore cancelled" } }
+  -- Launch mode is unchanged, so the renderer stays on the screen it started from
 ```
 
 ---
@@ -3450,8 +3475,10 @@ Payload:
 **Key behaviours:**
 
 - One file, `userData/settings.json`, owned by this module (UI State Store in
-  `architecture.md`). Nothing here is in the database, so restoring a library never
-  changes the user's appearance, thresholds or layout
+  `architecture.md`). Nothing here is in the database, so restoring a restore point
+  never changes the user's appearance, thresholds or layout. The one exception is a
+  first-run restore from a backup folder, which applies the preferences saved in that
+  folder's manifest.json (Module 9) so a new machine matches the old one
 - Three sections: `preferences` (chosen in Settings), `ui` (remembered as the user
   works — no Settings control) and `backup` (written by Module 9 through this module,
   read-only to the renderer)

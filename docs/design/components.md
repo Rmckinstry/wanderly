@@ -306,7 +306,7 @@ A trip's budget at a glance: estimate, per day, and — once actuals exist — t
 
 **Tokens** — surface, border, border-control, text, text-muted, accent (links), cat-1…cat-5, radius-xl, radius-sm, space-4; numbers `money-md`, `money-lg`, `num`.
 
-**Per person** — not shown in this version (D-28). Budgets are shared; split-by-person budgets are a later item (handoff 18).
+**Per person** — not shown in this version (D-28). Budgets are shared; split-by-person budgets are a later item (US-064, FR16).
 
 **Usage** — Same fields in the same position on every trip, so comparison reads at a glance (FR10). Never show full budget detail in the summary view.
 

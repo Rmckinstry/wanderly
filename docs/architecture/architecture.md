@@ -311,7 +311,7 @@ Two separate things are easy to confuse here:
 | Whether a block is **shown open** in the trip builder | UI state (`ui.expanded_blocks`, see UI State Store) | Expand / Collapse, Expand all / Collapse all, Enter on a block |
 
 Collapsing a block only closes it in the builder. Its days, notes and POIs stay in the
-database and reappear when it is opened again (US-013, handoff 30), and presentation
+database and reappear when it is opened again (US-013, D-48), and presentation
 mode shows every day that exists whatever the builder shows.
 
 Transitions:
@@ -340,7 +340,7 @@ Rules for a block with days:
   which is how a broad block's days are reorganized into more specific ones (US-013)
 - A block's only day cannot be deleted or moved out; delete the block instead
 - Changing a block's place ("Change place…") keeps its days, duration and notes
-  (handoff 29)
+  (US-012, D-49)
 
 ---
 
@@ -553,27 +553,43 @@ consistent file.
 
 ```
 App startup
-  0. No library file?            → create an empty one; launch mode = first_run
-  1. PRAGMA quick_check          → on failure: move the file aside as
-                                   wanderly-damaged-<date>.db (kept, never deleted);
-                                   launch mode = recovery (integrity_failed)
+  0. No library file?            → create an empty one
+  1. PRAGMA quick_check          → on failure: copy the file to
+                                   wanderly-damaged-<date>.db (kept, never deleted;
+                                   skipped if this damaged file was already copied);
+                                   launch mode = recovery (integrity_failed) — do not open
   2. Pending migrations?
        yes → snapshot  backups/pre-migration-<timestamp>.db
              run migrations in one transaction
              on failure: roll back, restore that snapshot;
                          launch mode = recovery (migration_failed) — do not open
-  3. No daily snapshot in the last 24h?
+  3. Library empty and backup.first_run still true?
+       yes → launch mode = first_run
+  4. Library not empty and no daily snapshot in the last 24h?
        yes → snapshot  backups/daily-<date>.db
-  4. Prune: keep the 7 newest daily and the 5 newest pre-migration snapshots
-  5. Load the renderer at the route for the launch mode: the app, /welcome, or /recovery
+  5. Prune: keep the 7 newest daily and the 5 newest pre-migration snapshots
+  6. Load the renderer at the route for the launch mode: the app, /welcome, or /recovery
 ```
+
+**First run** is decided by the library being empty *and* the `backup.first_run` flag
+in `settings.json` still being true. The flag starts true and is cleared only by "Start
+fresh" or a successful restore, so quitting on `/welcome` without choosing brings
+`/welcome` back on the next launch. Requiring an empty library means a lost or reset
+settings file can never send a user with real data to `/welcome`.
+
+**No snapshots of an empty library.** Step 4 skips the daily snapshot while the library
+is empty, so pruning can never push real restore points out with empty ones — even if
+the user picks "Start fresh" after losing their library.
 
 Every snapshot is written with a small JSON sidecar (`<name>.json`: app version, schema
 version, record counts, size) so the restore list can show "23 countries · 412 POIs ·
-11 trips" without opening each database (handoff 21).
+11 trips" without opening each database.
 
-**Recovery screen.** On `integrity_failed` the damaged file is moved beside the library
-before anything else happens, so no restore can overwrite it, and the screen names it.
+**Recovery screen.** On `integrity_failed` the damaged file is copied beside the library
+before anything else happens, so no restore can overwrite the copy, and the screen names
+it. The live file stays where it is, so if the user quits, the next launch fails the same
+check and returns to the recovery screen; only a successful restore (which swaps the live
+file) ends recovery. Nothing is snapshotted or pruned while in recovery.
 The user picks a restore point (newest selected) or another folder. On
 `migration_failed` the library is intact but on the previous schema, which this version
 of the app cannot open; the screen shows the error with details and can only quit, copy
@@ -613,19 +629,19 @@ Choose a restore point (local snapshot, or a backup folder)
   4. Backup folder only: copy its media into the media directory, reporting progress
   5. Copy the database to a temporary file beside the library, then close the
      connection and swap it in — the only step that replaces anything
-  6. First run only: the folder becomes the configured backup folder, and the
-     preferences in its manifest are applied
+  6. First run only: the folder becomes the configured backup folder, the
+     preferences in its manifest are applied, and `backup.first_run` is cleared
   7. Relaunch → pending migrations run → search index rebuilt
 ```
 
 **Choosing a folder to restore from.** The user may pick the `Wanderly Backup` folder
 itself or the folder (or drive) that contains it: Wanderly checks the picked folder and
-then one level down for a child named `Wanderly Backup` (handoff 21).
+then one level down for a child named `Wanderly Backup`.
 
 **Progress.** Steps 4 and 5 send `backup:restore:progress` events with bytes and files
-done and total, so the first-run restore shows a determinate bar (handoff 31). Totals are
+done and total, so the first-run restore shows a determinate bar (NFR6). Totals are
 known before copying starts from the manifest. Because nothing is replaced until step 5,
-a cancel during step 4 is safe: the partly-copied files are deleted and the library is
+a cancel during step 4 (`backup:restore:cancel`) is safe: the partly-copied files are deleted and the library is
 untouched (D-51). Step 5 shows "Finishing…" and cannot be cancelled.
 
 A local snapshot restores the database only; media files stay as they are, and any
@@ -641,7 +657,7 @@ database, so restoring a database never changes where backups go.
 ### UI State Store
 
 Preferences and remembered UI state live in one JSON file, `userData/settings.json`,
-owned by the Settings module (handoff 14). The renderer reads it once at startup and
+owned by the Settings module. The renderer reads it once at startup and
 writes changes through `settings:all:update` (`api-contracts.md`, Module 10).
 
 | Section       | Holds                                                                                                                                                         | Set by                    |
@@ -653,7 +669,8 @@ writes changes through `settings:all:update` (`api-contracts.md`, Module 10).
 Why a file in the main process, not the database and not `localStorage`:
 
 - **Not the database**, because restoring an older library must not change how the app
-  looks or where backups go, and because none of it is the user's research. Budget
+  looks or where backups go (a first-run restore from a backup folder deliberately
+  applies the preferences saved in its manifest — Restore step 6), and because none of it is the user's research. Budget
   thresholds are in this file for the same reason: they change how a difference is
   coloured, not any amount (D-18).
 - **Not `localStorage`**, because the main process needs some of it before the renderer
@@ -746,7 +763,7 @@ All data remains on the user's local machine:
   `-wal` and `-shm` companions while open)
 - Media files: Electron `app.getPath('userData')/media/`
 - Local snapshots: `app.getPath('userData')/backups/`
-- A library that failed its startup check, kept for the user:
+- A copy of a library that failed its startup check, kept for the user:
   `app.getPath('userData')/wanderly-damaged-<date>.db`
 - App settings and logs: `app.getPath('userData')/settings.json` and `logs/`
 - Backup folder (optional): a local path chosen by the user. The app only writes files
@@ -838,7 +855,7 @@ The last two are full-window screens without the shell.
 | `/pois/:id`                          | POI Detail               | Description, practical notes, photos, in trips                                         |
 | `/trips`                             | Trips list               | List / Grid; pinned first, then newest; status (single-select), country and tag filters |
 | `/trips/:id`                         | Trip builder             | Location and travel blocks, days; `?day=<id>` scrolls to and selects a day or POI      |
-| `/trips/:id/budgets/:budgetId`       | Budget                   | One of the trip's budgets; the switcher moves between them (handoff 11)                |
+| `/trips/:id/budgets/:budgetId`       | Budget                   | One of the trip's budgets; the switcher moves between them                            |
 | `/trips/:id/budgets`                 | —                        | Redirects to the primary budget, or back to the trip if it has none                    |
 | `/travel-windows`                    | Travel Windows           | Upcoming and Past; `?archived=1` shows archived windows                                |
 | `/travel-windows/:id`                | Travel Window Detail     | Side by side or one at a time (remembered per window)                                  |
@@ -895,7 +912,6 @@ No work should begin on an affected area until the item is resolved.
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ---------------------------- | ------------------------------------------------------------------------ |
 | B   | **Native module packaging** — on the first packaged build for each target (macOS arm64, macOS x64, Windows x64), confirm `better-sqlite3` and Sharp load from the unpacked ASAR directory and that the database opens and an image imports | DevOps / Build      | First packaged build         | App crashes on launch, or image import fails, in the packaged app only   |
 | D   | **TipTap plain text extraction** — confirm the `extractPlainText(tiptapJson)` utility correctly handles all TipTap node types used in the app (bold, italic, lists, links, etc.) before FTS5 indexing is built     | Backend Engineer    | Search module implementation | FTS5 index contains malformed body text; search returns degraded results |
-| F   | **Recovery and first-run screens need two design answers.** (1) Can a first-run restore be cancelled mid-copy? The architecture allows it until the database swap; the design shows no Cancel (design question F). (2) After a *failed migration* the design offers "Open library", but this version of the app cannot open a library on the previous schema — the screen can only show the error and quit. The design needs a different action there | `/uiux` with owner  | First-run restore and recovery screens | First-run restore ships without Cancel; the migration-failed screen shows a button that cannot work |
 
 **Resolved:**
 
@@ -907,3 +923,7 @@ No work should begin on an affected area until the item is resolved.
 - **E — Budget cost-per-day with mixed block state.** Cost per day is null ("incomplete")
   unless every block on the trip has a duration. See the Budget module's Key behaviours in
   `api-contracts.md`.
+- **F — Recovery and first-run screen actions.** A first-run restore can be cancelled
+  while media copies and not during the final swap (D-51; `backup:restore:cancel` in
+  `api-contracts.md`). The failed-migration screen offers Quit, Copy details and Show
+  library file — no "Open library" (D-50). See Backup and Recovery Pattern.

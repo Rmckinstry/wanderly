@@ -43,7 +43,7 @@ Edge cases:
 - US-037 no data or status changes; Esc returns exactly where you were → re-entering starts at the beginning (US-042).
 - US-038 read-only, simple navigation, placeholders, rich text renders → as above.
 - US-040 snapshot: total, per day, Under/Close/Over once actuals exist (Variance on the ledger's estimate line); per person removed (D-28); "Budget not yet estimated"; same position in comparison; snapshot only; primary budget with "1 of 2 budgets" note in `micro` under the estimate.
-- US-041 photos supporting, hero = designated else first available from the trip or its linked places (handoff 12).
+- US-041 photos supporting, hero = designated else first available from the trip or its linked places (hero rule in `api-contracts.md`, Presentation module).
 
 Handoff notes: side padding `space-14`; header and footer `space-6` vertical; option dots 8px; hero photo full-bleed in its box with `radius-sm`, no frame (D-52).
 

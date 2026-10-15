@@ -115,6 +115,7 @@ These are decided but not part of the P0 build. Each has its own story.
 - **FR16** *(P1)* — **Split budgets.** A budget can be split between travelers instead of shared: each traveler has a name and a share (%), and cost per person returns to the budget snapshot and the presentation. See US-064.
 - **FR17** *(P2)* — **Help and first-use tutorial.** A Help / FAQ view, and a short tutorial the first time the app is used that can be replayed from Help. The tutorial brings its own sample content, kept apart from the user's library. See US-065 and US-066.
 - **FR18** *(P2)* — **Customizable keyboard shortcuts**, in Settings › Keyboard. See US-067.
+- **FR19** *(P2)* — **Budget category colours.** The user picks a colour for each budget category from a small curated set per palette (about 8, contrast-checked), never a free colour picker. No story yet; write one when this is scheduled (D-25).
 
 ---
 

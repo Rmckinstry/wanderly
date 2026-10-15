@@ -7,7 +7,7 @@ last-updated: 2026-10-13
 
 # Tips and lessons learned (P1)
 
-Wireframes: TipsList, TipDetail, TipNew. Decisions D-37 – D-40; handoff item 24.
+Wireframes: TipsList, TipDetail, TipNew. Decisions D-37 – D-40.
 
 ---
 
@@ -31,7 +31,7 @@ Keyboard: Up/Down rows, Enter opens; Tab order: keyword → type → filters →
 
 Edge cases:
 - US-053 tips on a child surface on the parent with context → a Chiang Mai tip appears under Thailand with "Chiang Mai · Northern Thailand".
-- US-053 separated by type → one list with TypeLabels and a type filter (D-38; handoff 24).
+- US-053 separated by type → one list with TypeLabels and a type filter (D-38).
 - US-053 / US-054 sort and filter by type, date, level, keyword → as above.
 - US-053 General tips not in destination views → Country/region/city Tips panels never list General tips.
 - US-054 no General tips → empty state.
@@ -83,5 +83,5 @@ Edge cases:
 - US-006 / US-050 only a title required → as above.
 - US-006 lesson linked only to Completed trips → picker lists Completed only.
 - US-051 any level, pre-populated from a record → as above.
-- US-006 vs US-051 trip as a tip's place → not allowed (D-40; handoff 24).
+- US-006 vs US-051 trip as a tip's place → not allowed (D-40).
 - No automatic tags → Tags empty on create.

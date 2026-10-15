@@ -68,7 +68,7 @@ Edge cases:
 - US-032 single trip has no prev/next → arrows hidden.
 - US-032 / US-033 no photos / no budget → neutral photo block; "Budget not yet estimated".
 - US-033 comparison read-only → no edit controls in columns other than choose/open/remove.
-- US-033 one trip "accessible with a note" → replaced by D-02 (handoff 3): no comparison with one trip.
+- US-033 one trip "accessible with a note" → replaced by D-02 (US-033 reworded): no comparison with one trip.
 - US-034 choosing doesn't change status, others stay visible and editable, no selection is valid, choice changeable → as above.
 
 ---

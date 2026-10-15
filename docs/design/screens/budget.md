@@ -26,7 +26,7 @@ States:
 Interactions:
 - New budget (from the trip's budget panel "+ New budget" or More ▾ › New budget) → FormDialog: Name, Start from (Blank / a template). The first budget becomes Primary.
 - Make primary → the switcher's "Primary" label moves; presentation and comparison use it.
-- Save as template → FormDialog with a unique name; copies categories and line names, never amounts (handoff 23).
+- Save as template → FormDialog with a unique name; copies categories and line names, never amounts (US-022).
 - Start from a template on a budget that already has categories → ConfirmDialog `warning` "Replace 5 categories with 'Full Trip Budget'? Amounts you've entered will be removed." (Replace / Cancel).
 - Delete category with items → ConfirmDialog `delete` "Delete Stays and its 3 lines?".
 - Drag rows by the grip (hover-revealed) to reorder lines within/between categories and to reorder categories.
@@ -45,8 +45,8 @@ Edge cases:
 - US-019 line needs only a name; categories add/rename/reorder/delete; unique category names per budget ("This budget already has Stays"); no limits; USD only → as above.
 - US-020 Under / Close / Over (+ Way over, D-18) with glyphs; thresholds global in Settings › Budget; pending ≠ zero; actual without estimate shows "—" → Variance tiers.
 - US-021 multiple budgets in the snapshot → the trip builder panel shows the primary with "Primary · 1 of 2"; the Budget screen switcher shows each.
-- US-021 per person → removed in v1 (D-28; handoff 18). Per day incomplete when a stop lacks a duration → "Needs every stop's length".
-- US-021 partial label → not used (D-20; handoff 6). Exact match is Close.
+- US-021 per person → removed in v1 (D-28; split budgets later, US-064). Per day incomplete when a stop lacks a duration → "Needs every stop's length".
+- US-021 partial label → not used (D-20). Exact match is Close.
 - US-021 real-time → every edit updates subtotals, totals, snapshot and the trip builder panel immediately.
 - US-022 template structure only; edits don't affect existing budgets; deleting a template doesn't affect budgets; unique names; overwrite warning → as above and settings.md.
 

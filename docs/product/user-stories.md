@@ -323,7 +323,7 @@ Then the block appears in the itinerary in sequence, the total trip duration is 
 - A block can be set at country, region, or city level — no level is required over another
 - Duration is optional on any block
 - A trip can mix blocks at different geographic levels (e.g. "Italy — 3 days" alongside "Chiang Mai — 4 days")
-- A block can be refined over time — a country block can be replaced by more specific region or city blocks as planning matures; changing a block's place keeps its days when the new place is in the same country
+- A block can be refined over time — a country block can be replaced by more specific region or city blocks as planning matures; changing a block's place ("Change place…") keeps its days, duration and notes, whichever country the new place is in
 - Deleting a block does not delete the referenced country, region, or city from the master library
 - A country stays linked to the trip for as long as any of its blocks use it — it can be unlinked from the trip only after those blocks are removed or pointed elsewhere
 - A country used by any trip's location block cannot be deleted from the master library — the app lists the trips that use it so I can remove it from them first
