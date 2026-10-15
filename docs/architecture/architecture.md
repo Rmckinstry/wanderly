@@ -576,8 +576,8 @@ version, record counts, size) so the restore list can show "23 countries · 412 
 before anything else happens, so no restore can overwrite it, and the screen names it.
 The user picks a restore point (newest selected) or another folder. On
 `migration_failed` the library is intact but on the previous schema, which this version
-of the app cannot open; the screen shows the error with details and can only quit
-(open item F).
+of the app cannot open; the screen shows the error with details and can only quit, copy
+the details or show the library file, and advises reinstalling the previous version (D-50).
 
 **Backup folder** (optional, strongly prompted): the user picks a folder in Settings —
 an external drive, or a folder their own sync or backup tool covers. The app writes:
@@ -625,8 +625,8 @@ then one level down for a child named `Wanderly Backup` (handoff 21).
 **Progress.** Steps 4 and 5 send `backup:restore:progress` events with bytes and files
 done and total, so the first-run restore shows a determinate bar (handoff 31). Totals are
 known before copying starts from the manifest. Because nothing is replaced until step 5,
-a cancel during step 4 could be added safely by deleting the partly-copied files;
-whether to offer one is open item F.
+a cancel during step 4 is safe: the partly-copied files are deleted and the library is
+untouched (D-51). Step 5 shows "Finishing…" and cannot be cancelled.
 
 A local snapshot restores the database only; media files stay as they are, and any
 images referenced by the restored database but since purged show as missing. A backup

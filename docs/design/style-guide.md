@@ -158,4 +158,4 @@ An enhanced, modern, organised notebook (D-05): the calm of a paper notebook wit
 
 Personas: the **Trip Architect** (builds everything, keyboard-first, desktop) and the **Co-Decider** (sees only presentation mode; must never need an explanation).
 
-Open items for `/pm` and `/architect` are in [handoff-to-pm-architect.md](handoff-to-pm-architect.md).
+The design backlog and P0 story coverage are in [links.md](links.md).

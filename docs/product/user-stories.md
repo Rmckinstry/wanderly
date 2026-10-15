@@ -357,7 +357,7 @@ Then the block expands into numbered days matching the assigned duration, the lo
 - A trip can exist in a mixed state — some blocks expanded into days, others still in location-block mode
 - A country or region block expanded into days can have its days later reorganized into sub-blocks if needed — by splitting the block in two at a chosen day, with each part keeping its days
 - Individual days can be added, removed, reordered, and moved between expanded blocks of the same trip — the block's duration always matches its number of days
-- An expanded block can be collapsed back to location-block mode — the app warns me first if any of its days have content, then keeps them: the days with their notes and POIs are hidden, not deleted, and return when I expand the block again
+- An expanded block can be collapsed back to location-block mode with no warning, because nothing is removed: the days with their notes and POIs are hidden, not deleted, and return when I expand the block again
 - Expand all and Collapse all expand or collapse every location block that has a duration in one step — blocks without a duration and travel blocks are skipped, and the trip shows how many blocks are expanded; which blocks are expanded is remembered per trip
 
 ---
@@ -650,7 +650,7 @@ _When I want to explore what I have on a specific destination, I want to browse 
 
 Given I am viewing the Countries list,
 When I select a country,
-Then I see all content nested under that country — regions, cities, POIs, trips, tips, and budgets — organized by the content hierarchy with content counts visible at each level.
+Then I see all content nested under that country — regions, cities, POIs, trips, and tips — organized by the content hierarchy with content counts visible at each level.
 
 **Edge Cases:**
 

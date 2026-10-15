@@ -1181,11 +1181,10 @@ Side effects:
   -- Block with days: it always has exactly duration_days days.
      Raising duration_days appends empty days numbered after the existing ones
   -- Changing the place (country_id / region_id / city_id) never touches the block's
-     days, duration or notes (handoff 29). The trip builder's "Change place…" offers
-     places in the block's own country, which is the case the design specifies; a
-     change to another country is also accepted and keeps the days
-  -- If country_id changes, the new country is added to trip_countries if not linked.
-     The old country stays linked (a link with no block behind it is allowed)
+     days, duration or notes (handoff 29). The trip builder's "Change place…" offers the
+     block's own country first, then other countries (D-49); any choice keeps the days
+  -- If country_id changes, the new country is added to trip_countries if not linked,
+     and the old country's link is removed if no other location block on the trip uses it (D-49)
 ```
 
 ```
@@ -1273,8 +1272,7 @@ Side effects: trip_days rows created for each block in `expanded`
 **Collapsing a block has no channel.** "Collapse to block", "Collapse all" and Enter on
 an open block only change which blocks the trip builder shows open — UI state, stored per
 trip by Module 10. The block's days, notes and POIs are untouched and reappear when the
-block is opened again (US-013; handoff 30). The warning before collapsing a block whose
-days have content is shown by the renderer from data it already holds.
+block is opened again (US-013; D-48). Collapsing shows no warning, since nothing is lost.
 
 ```
 POST /api/trips/blocks/:id/split
@@ -3240,8 +3238,8 @@ Side effects: none
      overwrites it (handoff 21). If that name exists, a counter is added (-2, -3, …)
   -- migration_failed: the migration was rolled back and the pre-migration snapshot
      restored, so the library is intact but on the old schema. This version of the app
-     cannot open it; the screen can only show the error and quit (see open item F in
-     architecture.md)
+     cannot open it; the screen offers Quit, Copy details and Show library file (D-50; see
+     Backup and Recovery Pattern in architecture.md)
 ```
 
 ```
